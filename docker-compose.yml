@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  mclabeling:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mclabeling:latest
+    container_name: mclabeling_app
+    restart: unless-stopped
+    
+    # 共享内存大小
+    shm_size: '2gb'
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # 环境变量配置
+    environment:
+      - DATABASE_URL=sqlite:///./data/mclabeling.db
+      - PORT=3000
+      - HOST=0.0.0.0
+      - MODEL_INSTANCES=1
+      - LOG_LEVEL=INFO
+      - TZ=Asia/Shanghai
+    
+    # 端口映射
+    ports:
+      - "3000:3000"
+    
+    # 数据卷挂载
+    volumes:
+      # 数据持久化
+      - ./data:/app/data
+      
+      # 配置文件
+      - ./.env:/app/.env:ro
+
+      # 时间同步
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:3000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # 网络配置
+    networks:
+      - mclabeling_network
+
+networks:
+  mclabeling_network:
+    driver: bridge

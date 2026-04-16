@@ -1,0 +1,18 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+gunicorn==21.2.0
+python-multipart==0.0.6
+jinja2==3.1.2
+sqlalchemy==2.0.23
+alembic==1.12.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+opencv-python==4.8.1.78
+Pillow==10.1.0
+numpy
+ultralytics
+pyyaml>=6.0
+werkzeug>=3.0.0
+# gpu版本
+torch>=2.0.0
+torchvision>=0.15.0

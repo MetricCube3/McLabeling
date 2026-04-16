@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能标注平台</title>
+
+    <!-- 主题颜色 -->
+    <meta name="theme-color" content="#3498db">
+
+    <!-- 页面描述 -->
+    <meta name="description" content="AI智能图像和视频标注平台，提升标注效率，支持多人协作">
+
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+</head>
+<body>
+    <div id="login-modal" class="modal-overlay">
+        <div class="login-container">
+            <div class="login-box">
+                <form id="login-form" class="login-form">
+                    <div class="form-row">
+                        <label for="username-input">用户名：</label>
+                        <input type="text" id="username-input" placeholder="请输入用户名">
+                    </div>
+                    <div class="form-row">
+                        <label for="password-input">密码：</label>
+                        <input type="password" id="password-input" placeholder="请输入密码">
+                    </div>
+                    <button type="button" id="login-btn">登录</button>
+                    <p id="login-error" class="error-message"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="container hidden" id="main-container">
+        <header id="main-header">
+            <div class="header-left">
+                <h1 class="header-title">Labeling</h1>
+            </div>
+            <div class="header-right">
+                <!-- 用户头像和下拉菜单 -->
+                <div class="user-avatar-container">
+                    <div class="user-avatar" id="user-avatar">
+                        <!-- 用户首字母将通过JS动态填充 -->
+                    </div>
+                    <div class="user-dropdown-menu hidden" id="user-dropdown-menu">
+                        <!-- 用户信息 -->
+                        <div class="dropdown-user-info">
+                            <div class="user-avatar-small">
+                                <!-- 用户首字母 -->
+                            </div>
+                            <div class="user-details">
+                                <div class="user-name" id="dropdown-username"></div>
+                                <div class="user-roles" id="dropdown-roles"></div>
+                            </div>
+                        </div>
+                        <!-- 分隔线 -->
+                        <div class="dropdown-divider"></div>
+                        <!-- 管理面板按钮 -->
+                        <button id="admin-mode-btn" class="dropdown-admin-btn hidden">管理面板</button>
+                        <button id="logout-btn" class="dropdown-logout-btn">退出登录</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容布局 - 只在主界面显示 -->
+        <div id="main-layout" class="main-layout">
+            <!-- 左侧边栏 - 只包含工作模式切换 -->
+            <aside id="main-sidebar" class="sidebar-expanded">
+                <div class="sidebar-header">
+                    <button id="toggle-sidebar-btn" class="toggle-sidebar-btn" title="隐藏侧边栏">
+                        <span class="btn-icon">◀</span>
+                    </button>
+                    <h3>工作模式</h3>
+                </div>
+
+                <div class="sidebar-content">
+                    <div class="mode-switcher-vertical">
+                        <button id="project-management-mode-btn" class="mode-btn hidden" title="切换到项目管理">
+                            <span class="mode-icon">📂</span>
+                            <span class="mode-text">项目管理</span>
+                        </button>
+                        <!-- 新增：标签管理模式 -->
+                        <button id="label-management-mode-btn" class="mode-btn" title="切换到标签管理">
+                            <span class="mode-icon">🏷️</span>
+                            <span class="mode-text">标签管理</span>
+                        </button>
+                        <!-- 新增：数据集管理按钮 -->
+                        <button id="dataset-management-mode-btn" class="mode-btn hidden" title="切换到数据集管理">
+                            <span class="mode-icon">📁</span>
+                            <span class="mode-text">数据集管理</span>
+                        </button>
+                        <!-- 在现有的侧边栏工作模式切换部分添加 -->
+                        <button id="task-assignment-mode-btn" class="mode-btn hidden" title="切换到任务分配">
+                            <span class="mode-icon">📋</span>
+                            <span class="mode-text">任务分配</span>
+                        </button>
+                        <button id="annotate-mode-btn" class="mode-btn active" title="切换到标注模式">
+                            <span class="mode-icon">🎯</span>
+                            <span class="mode-text">标注任务</span>
+                        </button>
+                        <button id="review-mode-btn" class="mode-btn" title="切换到审核模式">
+                            <span class="mode-icon">🔍</span>
+                            <span class="mode-text">审核任务</span>
+                        </button>
+                        <button id="model-management-mode-btn" class="mode-btn hidden" title="切换到模型管理">
+                            <span class="mode-icon">🧠</span>
+                            <span class="mode-text">模型管理</span>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主内容区域 -->
+            <div id="main-content-area" class="main-content-expanded">
+                <!-- 折叠侧边栏按钮（当侧边栏隐藏时显示） -->
+                <div id="sidebar-collapsed-header" class="sidebar-collapsed-header hidden">
+                    <button id="expand-sidebar-btn" class="expand-sidebar-btn">
+                        <span class="btn-icon">▶</span>
+                    </button>
+                </div>
+
+                <section id="project-management-ui" class="hidden">
+                    <div class="project-management-content">
+                        <!-- 项目创建部分 -->
+                        <div class="project-creation-section">
+                            <div class="section-header">
+                                <h3>🆕 新建项目</h3>
+                                <span class="admin-badge">管理员功能</span>
+                            </div>
+                            <div class="project-form-card">
+                                <h4>📋 创建新项目</h4>
+                                <div class="form-group">
+                                    <label for="new-project-name">项目名称</label>
+                                    <input type="text" id="new-project-name" placeholder="请输入项目名称" class="form-input">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>🏷️ 初始标签体系</label>
+                                    <div id="initial-labels-container" class="labels-container">
+                                        <!-- 初始标签将通过JavaScript动态添加 -->
+                                    </div>
+                                    <button id="add-initial-label-btn" class="btn-secondary">
+                                        <span class="btn-icon">➕</span>
+                                        添加初始标签
+                                    </button>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button id="create-project-btn" class="btn-primary">
+                                        <span class="btn-icon">✅</span>
+                                        创建项目
+                                    </button>
+                                    <button id="clear-project-form-btn" class="btn-secondary">
+                                        <span class="btn-icon">🗑️</span>
+                                        清空表单
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 项目列表部分 -->
+                        <div class="project-list-section">
+                            <div class="section-header">
+                                <h3>📊 项目管理</h3>
+                                <span class="project-count" id="project-count">共 0 个项目</span>
+                            </div>
+
+                            <div id="project-list-container" class="project-list-container">
+                                <!-- 项目列表将由JavaScript动态填充 -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 新增：标签管理界面 -->
+                <section id="label-management-ui" class="hidden">
+                    <div class="label-management-content">
+                        <!-- 新增：项目选择器 -->
+                        <div class="project-selector-section" id="project-selector-section">
+                            <div class="project-selector-card">
+                                <div class="pj-form-group">
+                                    <label for="label-project-select">📂 选择项目：</label>
+                                    <select id="label-project-select" class="form-select" required>
+                                        <!-- 项目选项将通过JavaScript动态加载，不再有全局选项 -->
+                                    </select>
+                                </div>
+                                <div class="current-project-info" id="current-project-info">
+                                    <span class="project-badge project">📁 请选择项目</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 标签列表 -->
+                        <div class="label-list-section">
+                            <div class="section-header">
+                                <h3>标签列表</h3>
+                                <span class="label-count" id="label-count">共 0 个标签</span>
+                            </div>
+                            <div id="label-list-container" class="label-list-container">
+                                <!-- 标签列表将由JavaScript动态填充 -->
+                            </div>
+                        </div>
+
+                        <!-- 管理员功能 -->
+                        <div id="label-admin-section" class="label-admin-section hidden">
+                            <div class="section-header">
+                                <h3>标签操作</h3>
+                                <span class="admin-badge">管理员功能</span>
+                            </div>
+
+                            <!-- 添加新标签 -->
+                            <div class="label-form-card">
+                                <h4 id="label-form-title">➕ 添加新标签</h4>
+                                <p id="label-form-hint" class="form-hint">请先选择项目后再添加标签。</p>
+                                <div class="form-group">
+                                    <label for="new-label-name">标签名称</label>
+                                    <input type="text" id="new-label-name" placeholder="请输入标签名称" class="form-input">
+                                    <button id="add-label-btn" class="btn-primary">添加标签</button>
+                                </div>
+                            </div>
+
+                            <!-- 编辑标签 -->
+                            <div class="label-edit-card hidden" id="label-edit-area">
+                                <h4>✏️ 编辑标签</h4>
+                                <input type="hidden" id="edit-label-id">
+                                <div class="form-group">
+                                    <label for="edit-label-name">新标签名称</label>
+                                    <input type="text" id="edit-label-name" placeholder="请输入新的标签名称" class="form-input">
+                                </div>
+                                <div class="form-actions">
+                                    <button id="save-edit-label-btn" class="btn-primary">保存修改</button>
+                                    <button id="cancel-edit-label-btn" class="btn-secondary">取消</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 普通用户提示 -->
+                        <div id="label-user-notice" class="label-user-notice hidden">
+                            <div class="notice-card">
+                                <h4>👀 只读模式</h4>
+                                <p id="user-notice-text">如需添加、编辑或删除标签，请联系管理员。</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 在标签管理界面后添加数据集管理界面 -->
+                <section id="dataset-management-ui" class="hidden">
+                    <div class="dataset-management-content">
+                        <!-- 视频上传部分 -->
+                        <div class="upload-section">
+                            <div class="section-header">
+                                <h3>🎬 视频上传</h3>
+                                <span class="admin-badge">管理员功能</span>
+                            </div>
+                            <div class="upload-form-card">
+                                <h4>📤 上传视频文件</h4>
+                                <p class="upload-description">支持 mp4, mov, avi 等格式视频文件</p>
+
+                                <!-- 添加项目选择 -->
+                                <div class="form-group">
+                                    <label for="video-project-select">选择项目：</label>
+                                    <select id="video-project-select" class="form-select">
+                                        <option value="">请选择项目</option>
+                                        <!-- 项目选项将通过JavaScript动态加载 -->
+                                    </select>
+                                </div>
+
+                                <div class="upload-controls">
+                                    <input type="file" id="main-video-upload-input" multiple
+                                           accept="video/mp4,video/quicktime,video/x-msvideo" class="file-input">
+                                    <button id="main-upload-videos-btn" class="btn-primary upload-btn">
+                                        <span class="btn-icon">⏫</span>
+                                        开始上传视频
+                                    </button>
+                                </div>
+                                <div id="main-upload-status" class="upload-status"></div>
+                            </div>
+                        </div>
+
+                        <!-- 图片上传部分 -->
+                        <div class="upload-section">
+                            <div class="section-header">
+                                <h3>🖼️ 图片上传</h3>
+                                <span class="admin-badge">管理员功能</span>
+                            </div>
+                            <div class="upload-form-card">
+                                <h4>📦 上传图片压缩包</h4>
+                                <p class="upload-description">支持 zip 格式压缩文件，系统会自动解压并创建任务</p>
+
+                                <!-- 添加项目选择 -->
+                                <div class="form-group">
+                                    <label for="image-project-select">选择项目：</label>
+                                    <select id="image-project-select" class="form-select">
+                                        <option value="">请选择项目</option>
+                                        <!-- 项目选项将通过JavaScript动态加载 -->
+                                    </select>
+                                </div>
+
+                                <div class="upload-controls">
+                                    <input type="file" id="main-image-upload-input" multiple
+                                           accept=".zip" class="file-input">
+                                    <button id="main-upload-images-btn" class="btn-primary upload-btn">
+                                        <span class="btn-icon">⏫</span>
+                                        开始上传图片包
+                                    </button>
+                                </div>
+                                <div id="main-upload-image-status" class="upload-status"></div>
+                            </div>
+                        </div>
+
+                        <!-- 项目筛选 -->
+                        <div class="dataset-filter-section">
+                            <div class="section-header">
+                                <h3>🔍 数据集筛选</h3>
+                            </div>
+                            <div class="filter-controls">
+                                <div class="form-group">
+                                    <label for="dataset-project-filter">按项目筛选：</label>
+                                    <select id="dataset-project-filter" class="form-select">
+                                        <option value="">全部项目</option>
+                                        <!-- 项目选项将通过JavaScript动态加载 -->
+                                    </select>
+                                </div>
+                                <button id="apply-dataset-filter" class="btn-primary">
+                                    <span class="btn-icon">🔍</span>
+                                    应用筛选
+                                </button>
+                                <button id="clear-dataset-filter" class="btn-secondary">
+                                    <span class="btn-icon">🔄</span>
+                                    清除筛选
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="dataset-overview-section">
+                            <div class="section-header">
+                                <div class="header-left">
+                                    <h3>📊 数据集</h3>
+                                    <div class="dataset-stats-summary">
+                                        <div class="stats-item">
+                                            <span class="stats-label">视频:</span>
+                                            <span class="stats-value" id="video-count">0</span>
+                                            <span class="stats-label">图片:</span>
+                                            <span class="stats-value" id="image-task-count">0</span>
+                                            <span class="stats-label">总计:</span>
+                                            <span class="stats-value" id="total-dataset-count">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="header-right">
+                                    <div class="pagination-controls">
+                                        <button id="first-page-btn" class="pagination-btn" title="第一页">
+                                            <span class="btn-icon">«</span>
+                                        </button>
+                                        <button id="prev-page-btn" class="pagination-btn" title="上一页">
+                                            <span class="btn-icon">‹</span>
+                                        </button>
+                                        <span class="pagination-info">
+                                            <span id="current-page">1</span> / <span id="total-pages">1</span>
+                                        </span>
+                                        <button id="next-page-btn" class="pagination-btn" title="下一页">
+                                            <span class="btn-icon">›</span>
+                                        </button>
+                                        <button id="last-page-btn" class="pagination-btn" title="最后一页">
+                                            <span class="btn-icon">»</span>
+                                        </button>
+                                    </div>
+                                    <button id="refresh-datasets-btn" class="btn-secondary">
+                                        <span class="btn-icon">🔄</span>
+                                        刷新
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="dataset-list-container" class="dataset-list-container">
+                                <!-- 数据集列表将由JavaScript动态填充 -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 模型管理界面 -->
+                <section id="model-management-ui" class="hidden">
+                    <div class="model-management-content">
+                        <!-- 模型上传部分 -->
+                        <div class="model-section">
+                            <div class="section-header">
+                                <h3>🧠 YOLO模型管理</h3>
+                                <span class="admin-badge">管理员功能</span>
+                            </div>
+                            
+                            <!-- 上传模型 -->
+                            <div class="model-upload-card">
+                                <h4>📤 上传YOLO模型</h4>
+                                <p class="upload-description">支持 .pt 格式的YOLO模型文件（可从 <a href="https://github.com/ultralytics/ultralytics" target="_blank">Ultralytics</a> 下载预训练模型）</p>
+                                
+                                <div class="form-group">
+                                    <label for="model-name-input">模型名称：</label>
+                                    <input type="text" id="model-name-input" class="form-input" placeholder="例如：yolov8n-seg">
+                                </div>
+                                
+                                <div class="upload-controls">
+                                    <input type="file" id="model-upload-input" accept=".pt" class="file-input">
+                                    <button id="upload-model-btn" class="btn-primary upload-btn">
+                                        <span class="btn-icon">⏫</span>
+                                        上传模型文件
+                                    </button>
+                                </div>
+                                <div id="model-upload-status" class="upload-status"></div>
+                            </div>
+
+                            <!-- 模型列表 -->
+                            <div class="model-list-card">
+                                <div class="model-list-header">
+                                    <h4>📋 模型列表</h4>
+                                    <div id="current-active-model" class="current-active-model">
+                                        <span class="active-model-label">当前应用:</span>
+                                        <span id="active-model-name" class="active-model-name">未设置</span>
+                                    </div>
+                                </div>
+                                <div id="uploaded-models-list" class="models-list">
+                                    <!-- 模型列表将由JavaScript动态填充 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 模型训练部分 -->
+                        <div class="model-section">
+                            <div class="section-header">
+                                <h3>🎯 模型训练</h3>
+                                <span class="admin-badge">管理员功能</span>
+                            </div>
+                            
+                            <div class="model-train-card">
+                                <h4>🚀 开始训练</h4>
+                                <p class="train-description">使用标注数据训练YOLO模型</p>
+                                
+                                <!-- 项目选择 -->
+                                <div class="form-group">
+                                    <label for="train-project-select">选择训练数据集项目：</label>
+                                    <select id="train-project-select" class="form-select">
+                                        <option value="">请选择项目</option>
+                                        <!-- 项目选项将通过JavaScript动态加载 -->
+                                    </select>
+                                </div>
+                                
+                                <!-- 基础模型选择 -->
+                                <div class="form-group">
+                                    <label for="base-model-select">选择训练模型：</label>
+                                    <select id="base-model-select" class="form-select">
+                                        <option value="">请选择模型</option>
+                                        <!-- 模型选项将通过JavaScript动态加载 -->
+                                    </select>
+                                </div>
+                                
+                                <!-- 任务类型选择 -->
+                                <div class="form-group">
+                                    <label for="task-type-select">任务类型：</label>
+                                    <select id="task-type-select" class="form-select">
+                                        <option value="detect">目标检测 (Object Detection)</option>
+                                        <option value="segment" selected>实例分割 (Instance Segmentation)</option>
+                                    </select>
+                                    <p class="form-hint">目标检测训练边界框，实例分割训练多边形掩码</p>
+                                </div>
+                                
+                                <!-- 训练参数 -->
+                                <div class="train-params-group">
+                                    <div class="form-group">
+                                        <label for="train-epochs">训练轮数（Epochs）：</label>
+                                        <input type="number" id="train-epochs" class="form-input" value="100" min="1" max="1000">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="train-batch">批次大小（Batch）：</label>
+                                        <input type="number" id="train-batch" class="form-input" value="16" min="1" max="64">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="train-lr">学习率（LR）：</label>
+                                        <input type="number" id="train-lr" class="form-input" value="0.01" min="0.0001" max="1" step="0.0001">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="train-imgsz">图像尺寸：</label>
+                                        <input type="number" id="train-imgsz" class="form-input" value="640" min="320" max="2048" step="32">
+                                    </div>
+                                </div>
+                                
+                                <div class="train-controls">
+                                    <button id="start-train-btn" class="btn-primary train-btn">
+                                        <span class="btn-icon">🚀</span>
+                                        开始训练
+                                    </button>
+                                    <button id="stop-train-btn" class="btn-danger train-btn hidden">
+                                        <span class="btn-icon">⏹️</span>
+                                        停止训练
+                                    </button>
+                                </div>
+                                
+                                <!-- 训练日志 -->
+                                <div id="train-log-section" class="train-log-section hidden">
+                                    <div class="train-log-header">
+                                        <h4>📝 训练日志</h4>
+                                        <button id="expand-log-btn" class="expand-log-btn" title="全屏查看日志">
+                                            <span class="btn-icon">🔍</span>
+                                            放大
+                                        </button>
+                                    </div>
+                                    <div id="train-log" class="train-log"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 训练历史 -->
+                        <div class="model-section">
+                            <div class="section-header">
+                                <h3>📜 训练历史</h3>
+                            </div>
+                            <div class="train-history-card">
+                                <div id="train-history-list" class="train-history-list">
+                                    <!-- 训练历史将由JavaScript动态填充 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 任务分配界面 -->
+                <section id="task-assignment-ui" class="hidden">
+                    <div class="task-assignment-content">
+                        <!-- 标注任务分配模块 -->
+                        <div class="assignment-module">
+                            <div class="module-header">
+                                <h3>🎯 标注任务</h3>
+                                <span class="module-description">为标注员分配标注任务</span>
+                            </div>
+                            <div class="assignment-content">
+                                <div class="resource-pool">
+                                    <div class="pool-header">
+                                        <h4>📂 待标注任务池</h4>
+                                        <span class="pool-count" id="video-pool-count">0 个任务</span>
+                                    </div>
+                                    <div class="pool-container">
+                                        <select id="video-pool-select" multiple size="8"></select>
+                                    </div>
+                                </div>
+
+                                <div class="assignment-controls">
+                                    <div class="user-selection">
+                                        <label for="annotator-select">👤 选择标注员</label>
+                                        <select id="annotator-select">
+                                            <option value="">请选择标注员</option>
+                                        </select>
+                                    </div>
+                                    <button id="assign-annotation-btn" class="btn-primary assign-btn">
+                                        ➡️ 分配选中任务
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 审核任务分配模块 -->
+                        <div class="assignment-module">
+                            <div class="module-header">
+                                <h3>🔍 审核任务</h3>
+                                <span class="module-description">为审核员分配审核任务</span>
+                            </div>
+                            <div class="assignment-content">
+                                <div class="resource-pool">
+                                    <div class="pool-header">
+                                        <h4>📝 待审核任务池</h4>
+                                        <span class="pool-count" id="review-pool-count">0 个任务</span>
+                                    </div>
+                                    <div class="pool-container">
+                                        <select id="review-pool-select" multiple size="8"></select>
+                                    </div>
+                                </div>
+
+                                <div class="assignment-controls">
+                                    <div class="user-selection">
+                                        <label for="reviewer-select">👥 选择审核员</label>
+                                        <select id="reviewer-select">
+                                            <option value="">请选择审核员</option>
+                                        </select>
+                                    </div>
+                                    <button id="assign-review-btn" class="btn-primary assign-btn">
+                                        ➡️ 分配选中任务
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 任务列表区域 -->
+                <section id="video-selection">
+                    <div id="breadcrumb" class="breadcrumb"></div>
+                    <div id="video-list" class="video-grid"></div>
+                </section>
+
+                <!-- 标注界面 - 保持原有结构 -->
+                <main id="annotation-ui" class="hidden">
+                    <div class="annotation-page-header">
+                        <button id="back-to-list-btn" class="back-btn">
+                            <span class="btn-icon">←</span>
+                            返回列表
+                        </button>
+                        <!-- 快捷键说明 -->
+                        <div class="keyboard-shortcuts-guide">
+                            <div class="shortcuts-title">⌨️ 快捷键：</div>
+                            <div class="shortcuts-list">
+                                <div class="shortcut-item"><kbd>←</kbd>/<kbd>A</kbd> 上一帧</div>
+                                <div class="shortcut-item"><kbd>→</kbd>/<kbd>D</kbd> 下一帧</div>
+                                <div class="shortcut-item"><kbd>Ctrl+S</kbd>/<kbd>S</kbd> 保存</div>
+                                <div class="shortcut-item"><kbd>Ctrl+R</kbd>/<kbd>R</kbd> 清空</div>
+                                <div class="shortcut-item"><kbd>ESC</kbd> 返回</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="main-content">
+                        <div class="annotation-area">
+                            <div id="image-container">
+                                <img id="display-image" src="" alt="Video Frame">
+                                <canvas id="point-canvas"></canvas>
+                            </div>
+                        </div>
+                        <!-- 标注列表保持原位置 -->
+                        <aside id="sidebar">
+                            <div class="sidebar-header">
+                                <h3>标注列表</h3>
+                                <button id="add-object-btn" class="sidebar-btn add-btn">
+                                    <span class="btn-icon">+</span>
+                                    添加新实例
+                                </button>
+                            </div>
+                            <div id="object-list" class="object-list-container"></div>
+                        </aside>
+                    </div>
+
+                    <div class="controls">
+                        <div class="controls-row">
+                            <div class="frame-controls">
+                                <div class="skip-control">
+                                    <label for="skip-frames">间隔帧数：</label>
+                                    <input type="number" id="skip-frames" value="1" min="1" class="skip-input">
+                                </div>
+                                <div class="navigation">
+                                    <button id="prev-frame-btn" class="nav-btn prev-btn">
+                                        <span class="btn-icon">◀</span>
+                                        上一帧
+                                    </button>
+                                    <span id="frame-counter" class="frame-counter">0 / 0</span>
+                                    <button id="next-frame-btn" class="nav-btn next-btn">
+                                        下一帧
+                                        <span class="btn-icon">▶</span>
+                                    </button>
+                                </div>
+                                <div class="action-controls">
+                                    <button id="save-success-btn" class="action-btn save">
+                                        <span class="btn-icon">💾</span>
+                                        保存
+                                    </button>
+                                    <button id="auto-annotate-btn" class="action-btn auto-annotate">
+                                        <span class="btn-icon">🤖</span>
+                                        自动标注
+                                    </button>
+                                    <button id="reset-btn" class="action-btn reset">
+                                        <span class="btn-icon">🔄</span>
+                                        清空
+                                    </button>
+                                    <button id="modify-btn" class="action-btn modify hidden">
+                                        <span class="btn-icon">✏️</span>
+                                        修改
+                                    </button>
+                                    <button id="cancel-modify-btn" class="action-btn cancel-modify hidden">
+                                        <span class="btn-icon">❌</span>
+                                        取消修改
+                                    </button>
+                                    <button id="delete-btn" class="action-btn delete hidden">
+                                        <span class="btn-icon">🗑️</span>
+                                        删除图片
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- 管理面板 - 独立显示 -->
+        <section id="admin-panel" class="hidden">
+            <!-- 管理面板头部 -->
+            <div class="admin-panel-header">
+                <div class="admin-header-left">
+                    <button id="back-to-main-btn" class="back-to-main-btn">
+                        <span class="btn-icon">←</span>
+                        返回主界面
+                    </button>
+                </div>
+                <div class="admin-header-center">
+                    <h2>管理面板</h2>
+                </div>
+                <div class="admin-header-right">
+                    <!-- 可以放置其他管理功能按钮 -->
+                </div>
+            </div>
+
+            <div class="admin-panel-content">
+                <!-- 用户管理 -->
+                <div class="admin-section">
+                    <h3>👥 用户管理</h3>
+                    <div id="user-management-table" class="table-container"></div>
+
+                    <div class="user-form">
+                        <h4>📝 添加/编辑用户</h4>
+                        <div class="form-group">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="new-username" placeholder="用户名" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="new-password" placeholder="密码（留空则不修改）" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🎭 角色权限</label>
+                            <div id="new-user-roles" class="roles-checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="roles" value="annotator">
+                                    <span class="checkmark"></span>
+                                    标注员
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="roles" value="reviewer">
+                                    <span class="checkmark"></span>
+                                    审核员
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button id="add-user-btn" class="btn-primary">💾 保存用户</button>
+                            <button id="clear-form-btn" class="btn-secondary">🗑️ 清空表单</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 全屏日志模态框 -->
+        <div id="fullscreen-log-modal" class="modal-overlay hidden">
+            <div class="fullscreen-log-container">
+                <div class="fullscreen-log-header">
+                    <h3>📝 训练日志</h3>
+                    <button id="close-fullscreen-log-btn" class="close-modal-btn">
+                        <span class="btn-icon">✕</span>
+                    </button>
+                </div>
+                <div id="fullscreen-train-log" class="fullscreen-train-log"></div>
+            </div>
+        </div>
+
+        <!-- 训练结果查看模态框 -->
+        <div id="training-results-modal" class="modal-overlay hidden">
+            <div class="training-results-container">
+                <div class="training-results-header">
+                    <h3>📊 训练效果图</h3>
+                    <button id="close-results-modal-btn" class="close-modal-btn">
+                        <span class="btn-icon">✕</span>
+                    </button>
+                </div>
+                <div id="training-results-grid" class="training-results-grid"></div>
+            </div>
+        </div>
+
+        <div id="toast-notification" class="hidden"></div>
+
+    </div>
+    <script src="{{ url_for('static', path='js/app.js') }}"></script>
+    <script src="{{ url_for('static', path='js/model_management.js') }}"></script>
+</body>
+</html>
