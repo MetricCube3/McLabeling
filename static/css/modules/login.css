@@ -1,0 +1,169 @@
+/**
+ * 登录模块样式 - 浅色主题
+ */
+
+/* 登录页面覆盖深色遮罩，使用浅色背景 */
+#login-modal.modal-overlay {
+    background-color: var(--background-color);
+}
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--spacing-lg);
+}
+
+/* 登录区域融合在页面中，无独立背景框 */
+.login-box {
+    background: transparent;
+    padding: var(--spacing-xl);
+    border-radius: 0;
+    box-shadow: none;
+    width: 100%;
+    max-width: 420px;
+    border: none;
+}
+
+.login-box h2 {
+    text-align: center;
+    color: var(--text-color);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.form-group label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.form-group input {
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-size: 15px;
+    transition: all var(--transition-fast);
+}
+
+.form-group input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    outline: none;
+}
+
+/* 用户名和密码行：文字右对齐，输入框等宽 */
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.form-row label {
+    width: 60px;
+    text-align: right;
+    flex-shrink: 0;
+    color: var(--text-color);
+    font-weight: 500;
+    font-size: 15px;
+}
+
+.form-row input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-size: 15px;
+    transition: all var(--transition-fast);
+}
+
+.form-row input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    outline: none;
+}
+
+#login-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-active));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-md);
+}
+
+#login-btn:hover {
+    background: linear-gradient(135deg, var(--primary-hover), #0088a0);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+#login-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+#login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.login-error,
+.error-message {
+    color: var(--danger-color);
+    background: var(--danger-light);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    margin-top: var(--spacing-sm);
+    text-align: center;
+}
+
+.login-error:empty,
+.error-message:empty {
+    display: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* 响应式 */
+@media (max-width: 480px) {
+    .login-box {
+        padding: var(--spacing-lg);
+        max-width: 100%;
+    }
+
+    .form-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+
+    .form-row label {
+        width: auto;
+        text-align: left;
+    }
+}

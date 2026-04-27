@@ -1,0 +1,246 @@
+/* 标签统计详情模态框专用样式 */
+
+/* 确保模态框在最上层 */
+.modal-overlay {
+    z-index: 10000 !important;
+}
+
+/* 淡入动画 */
+.modal-overlay.fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* 淡出动画 */
+.modal-overlay.fade-out {
+    animation: fadeOut 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* 标签详情模态框 */
+.label-details-modal {
+    animation: slideDown 0.3s ease-out;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 标签详情模态框的关闭按钮 */
+.label-details-modal .close-modal-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: white;
+    border: 2px solid #e9ecef;
+    font-size: 28px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 1000;
+    line-height: 1;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.label-details-modal .close-modal-btn:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.label-details-modal .close-modal-btn:active {
+    transform: rotate(90deg) scale(1);
+}
+
+/* 滚动条美化 */
+.label-details-modal .modal-body > div:nth-child(2)::-webkit-scrollbar {
+    width: 8px;
+}
+
+.label-details-modal .modal-body > div:nth-child(2)::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.label-details-modal .modal-body > div:nth-child(2)::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.label-details-modal .modal-body > div:nth-child(2)::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* 抽帧模态框 */
+.frame-extraction-dialog {
+    border-radius: 12px;
+    overflow: hidden;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.frame-extraction-dialog .modal-body {
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(90vh - 180px);
+}
+
+.frame-extraction-dialog .modal-header,
+.frame-extraction-dialog .modal-footer {
+    flex-shrink: 0;
+}
+
+/* 抽帧模态框和提示模态框的关闭按钮 */
+.frame-extraction-modal .close-modal-btn,
+.frame-extraction-dialog .close-modal-btn,
+.extract-notice-dialog .close-modal-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: white;
+    border: 2px solid #e9ecef;
+    font-size: 28px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 1000;
+    line-height: 1;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.frame-extraction-modal .close-modal-btn:hover,
+.frame-extraction-dialog .close-modal-btn:hover,
+.extract-notice-dialog .close-modal-btn:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.frame-extraction-modal .close-modal-btn:active,
+.frame-extraction-dialog .close-modal-btn:active,
+.extract-notice-dialog .close-modal-btn:active {
+    transform: rotate(90deg) scale(1);
+}
+
+/* 隐藏类 */
+.hidden {
+    display: none !important;
+}
+
+/* 按钮样式 */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #0097a7);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0097a7, #00838f);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
+}
+
+.btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* 抽帧结果区域 */
+.extraction-result-section {
+    margin-top: 12px;
+}
+
+.extraction-progress-section {
+    margin-top: 12px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .label-details-modal {
+        max-width: 95% !important;
+        margin: 10px auto;
+    }
+    
+    .label-details-modal .modal-body {
+        padding: 16px !important;
+    }
+    
+    .label-details-modal .modal-header {
+        padding: 16px !important;
+    }
+}

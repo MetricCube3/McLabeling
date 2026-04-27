@@ -1,0 +1,140 @@
+/**
+ * 容器布局样式
+ */
+
+.container {
+    width: 100%;
+    background: var(--background-color);
+    color: var(--text-color);
+    margin-top: 50px;
+}
+
+#main-layout {
+    display: flex;
+    gap: 0;
+    margin-top: 0;
+    position: relative;
+    min-height: calc(100vh - 50px);
+    background: var(--background-color);
+    overflow: hidden;
+}
+
+#main-content-area {
+    flex: 1;
+    transition: all 0.3s ease;
+    background: var(--background-color);
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-lg);
+    overflow-y: auto;
+}
+
+#main-content-area.main-content-expanded {
+    margin-left: 0;
+}
+
+#main-content-area.full-width {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+
+/* 视频选择区域 */
+#video-selection {
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+}
+
+/* 任务列表网格 */
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+/* 任务项卡片 */
+.video-item {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.video-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.folder-icon {
+    font-size: 48px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.item-name {
+    font-weight: 500;
+    text-align: center;
+    word-break: break-word;
+}
+
+.item-stats {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* 空状态提示 */
+.no-tasks-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-tasks-hint {
+    font-size: 0.9rem;
+    color: #999;
+    margin-top: 10px;
+}
+
+/* 通用section样式 */
+section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+section.hidden {
+    display: none !important;
+}
+
+/* 面包屑 */
+.breadcrumb {
+    margin-bottom: 16px;
+    padding: 0 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.breadcrumb-separator {
+    margin: 0 8px;
+    color: var(--text-secondary);
+}
+
+.current-folder {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+/* 按钮图标 */
+.btn-icon {
+    display: inline-block;
+    margin-right: 6px;
+}

@@ -1,0 +1,56 @@
+/**
+ * Toast提示组件样式
+ * 导入自原style.css中的toast样式
+ */
+
+#toast-notification {
+    position: fixed;
+    top: 80px;
+    right: 10px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    color: #495057;
+    padding: 20px 23px;
+    border-radius: 16px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+    z-index: var(--z-index-toast);
+    font-size: 16px;
+    font-weight: 600;
+    max-width: 420px;
+    min-width: 280px;
+    display: none;
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#toast-notification.show {
+    display: block !important;
+    opacity: 1 !important;
+    transform: translateY(0) scale(1);
+}
+
+#toast-notification.fade-out {
+    opacity: 0 !important;
+    transform: translateY(-20px) scale(0.98) !important;
+}
+
+#toast-notification.success {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+}
+
+#toast-notification.error {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+}
+
+#toast-notification.warning {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+}
+
+#toast-notification.info {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    color: #0c5460;
+}

@@ -1,0 +1,160 @@
+/**
+ * 下拉菜单组件样式
+ */
+
+/* 用户下拉菜单 */
+.user-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 10px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 240px;
+    z-index: 10000;
+    animation: dropdownFadeIn 0.2s ease-out;
+}
+
+.user-dropdown-menu.hidden {
+    display: none;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 下拉菜单用户信息区域 */
+.dropdown-user-info {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-avatar-small {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), #0097a7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 700;
+    color: var(--text-color);
+    font-size: 18px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-roles {
+    color: var(--text-secondary);
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+/* 下拉菜单分隔线 */
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0;
+}
+
+/* 下拉菜单按钮 */
+.dropdown-admin-btn,
+.dropdown-logout-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 17px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dropdown-admin-btn:hover,
+.dropdown-logout-btn:hover {
+    background: var(--surface-hover);
+    color: var(--primary-color);
+}
+
+.dropdown-admin-btn::before {
+    content: "⚙️";
+    font-size: 16px;
+}
+
+.dropdown-logout-btn .btn-icon {
+    font-size: 20px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.dropdown-logout-btn:hover .btn-icon {
+    transform: scale(1.15);
+    opacity: 0.8;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .user-dropdown-menu {
+        min-width: 220px;
+        right: -10px;
+    }
+    
+    .dropdown-user-info {
+        padding: 16px;
+    }
+    
+    .user-avatar-small {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+    
+    .user-name {
+        font-size: 16px;
+    }
+    
+    .user-roles {
+        font-size: 13px;
+    }
+    
+    .dropdown-admin-btn,
+    .dropdown-logout-btn {
+        padding: 12px 16px;
+        font-size: 15px;
+    }
+}

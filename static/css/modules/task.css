@@ -1,0 +1,342 @@
+/**
+ * 任务分配模块样式
+ * 参考项目管理页面风格
+ */
+
+/* 任务分配主容器 */
+#task-assignment-ui {
+    padding: 40px 60px;
+    width: 100%;
+}
+
+.task-assignment-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* 分配模块卡片 */
+.assignment-module {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 模块头部 */
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.module-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 22px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.module-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* 分配内容区域 */
+.assignment-content {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 30px;
+    align-items: start;
+}
+
+/* 资源池 */
+.resource-pool {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.pool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pool-header h4 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.pool-count {
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.pool-container {
+    width: 100%;
+}
+
+.pool-container select {
+    width: 100%;
+    min-width: 400px;
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-color);
+    font-size: 14px;
+    line-height: 1.6;
+    transition: all 0.3s ease;
+}
+
+.pool-container select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.pool-container select option {
+    padding: 8px;
+    line-height: 1.6;
+}
+
+/* 保持选中状态的高亮，即使失去焦点 */
+.pool-container select option:checked {
+    background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%) !important;
+    color: #00838F !important;
+    font-weight: 600;
+}
+
+/* Firefox浏览器特定样式 */
+@-moz-document url-prefix() {
+    .pool-container select option:checked {
+        background-color: #E0F7FA !important;
+        color: #00838F !important;
+    }
+}
+
+/* 增强多选框的视觉效果 */
+.pool-container select[multiple] {
+    background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+}
+
+.pool-container select[multiple]:focus {
+    background: white;
+}
+
+/* 分配控制区域 */
+.assignment-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 250px;
+}
+
+.user-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.user-selection label {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.user-selection select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-color);
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.user-selection select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+/* 分配按钮 */
+.assign-btn {
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #00BCD4 0%, #00ACC1 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.assign-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.assign-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.assign-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 筛选控件 */
+.filter-controls-assignment {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-controls-assignment .filter-group {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.filter-controls-assignment .filter-group label {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.filter-controls-assignment .filter-select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-color);
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-controls-assignment .filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.filter-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+}
+
+.filter-btn.btn-primary {
+    background: linear-gradient(135deg, #00BCD4 0%, #00ACC1 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.filter-btn.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.filter-btn.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.filter-btn.btn-secondary {
+    background: white;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.filter-btn.btn-secondary:hover {
+    background: #f5f5f5;
+    transform: translateY(-2px);
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .assignment-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .assignment-controls {
+        width: 100%;
+    }
+    
+    .pool-container select {
+        min-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    #task-assignment-ui {
+        padding: 20px;
+    }
+    
+    .task-assignment-content {
+        gap: 20px;
+    }
+    
+    .assignment-module {
+        padding: 20px;
+    }
+    
+    .module-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .assignment-content {
+        gap: 20px;
+    }
+    
+    .pool-container select {
+        font-size: 13px;
+    }
+    
+    .user-selection select {
+        font-size: 14px;
+    }
+    
+    .assign-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}

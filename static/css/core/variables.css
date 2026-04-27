@@ -1,0 +1,102 @@
+/**
+ * CSS变量定义
+ * 浅色主题配色方案
+ */
+
+:root {
+    /* 主色调 - 保持原有的青色系 */
+    --primary-color: #00bcd4;
+    --primary-hover: #00acc1;
+    --primary-active: #0097a7;
+    
+    /* 辅助色 */
+    --secondary-color: #666;
+    --secondary-light: #999;
+    
+    /* 背景色 - 浅色主题 */
+    --background-color: #f5f7fa;          /* 主背景 */
+    --surface-color: #ffffff;             /* 卡片/面板背景 */
+    --surface-hover: #f8f9fa;            /* 悬停背景 */
+    --surface-active: #e9ecef;           /* 激活背景 */
+    
+    /* 文字颜色 */
+    --text-color: #2c3e50;               /* 主文字 */
+    --text-secondary: #6c757d;           /* 次要文字 */
+    --text-muted: #95a5a6;               /* 弱化文字 */
+    --text-inverse: #ffffff;             /* 反转文字（深色背景上） */
+    
+    /* 边框颜色 */
+    --border-color: #dee2e6;             /* 主边框 */
+    --border-light: #e9ecef;             /* 浅边框 */
+    --border-dark: #ced4da;              /* 深边框 */
+    
+    /* 状态颜色 */
+    --success-color: #28a745;
+    --success-light: #d4edda;
+    --warning-color: #ffc107;
+    --warning-light: #fff3cd;
+    --danger-color: #dc3545;
+    --danger-light: #f8d7da;
+    --info-color: #17a2b8;
+    --info-light: #d1ecf1;
+    
+    /* 特殊颜色 */
+    --folder-color: #f0ad4e;
+    --link-color: #007bff;
+    --link-hover: #0056b3;
+    
+    /* 阴影 */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.15);
+    
+    /* 圆角 */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+    
+    /* 过渡 */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    
+    /* 间距 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Z-index层级 */
+    --z-dropdown: 1000;
+    --z-modal: 1050;
+    --z-tooltip: 1100;
+    --z-fixed: 1200;
+}
+
+/* 深色主题支持（可选） */
+@media (prefers-color-scheme: dark) {
+    :root[data-theme="auto"] {
+        --background-color: #1f1f1f;
+        --surface-color: #2a2a2a;
+        --surface-hover: #333;
+        --surface-active: #3a3a3a;
+        
+        --text-color: #eee;
+        --text-secondary: #bbb;
+        --text-muted: #999;
+        --text-inverse: #2c3e50;
+        
+        --border-color: #444;
+        --border-light: #3a3a3a;
+        --border-dark: #555;
+        
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.5);
+        --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+}

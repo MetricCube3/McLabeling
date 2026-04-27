@@ -1,0 +1,269 @@
+/**
+ * 浅色主题覆盖样式
+ * 用于将深色主题转换为浅色主题
+ */
+
+/* 覆盖深色主题的颜色变量 */
+:root {
+    /* 背景色 - 浅色主题 */
+    --background-color: #f5f7fa !important;
+    --surface-color: #ffffff !important;
+    --surface-hover: #f8f9fa !important;
+    --surface-active: #e9ecef !important;
+    
+    /* 文字颜色 */
+    --text-color: #2c3e50 !important;
+    --text-secondary: #6c757d !important;
+    --text-muted: #95a5a6 !important;
+    --text-inverse: #ffffff !important;
+    
+    /* 边框颜色 */
+    --border-color: #dee2e6 !important;
+    --border-light: #e9ecef !important;
+    --border-dark: #ced4da !important;
+    
+    /* 阴影 - 浅色主题更柔和 */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.12) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 覆盖特定组件的深色样式 */
+
+/* 主容器 */
+.container {
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-shadow: var(--shadow-md);
+}
+
+/* 头部 */
+#main-header {
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-color);
+}
+
+/* 侧边栏 */
+#main-sidebar {
+    background: var(--surface-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar-item {
+    color: var(--text-color);
+    background: transparent;
+}
+
+.sidebar-item:hover {
+    background: var(--surface-hover);
+}
+
+.sidebar-item.active {
+    background: rgba(0, 188, 212, 0.1);
+    color: var(--primary-color);
+    border-left-color: var(--primary-color);
+}
+
+/* 卡片和面板 */
+.video-item,
+.task-folder,
+.review-image-item,
+.model-item,
+.admin-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.video-item:hover,
+.task-folder:hover,
+.review-image-item:hover {
+    background: var(--surface-hover);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-dark);
+}
+
+/* 表格 */
+table {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+}
+
+thead {
+    background: var(--surface-hover);
+    border-bottom: 2px solid var(--border-dark);
+}
+
+tbody tr:nth-child(even) {
+    background: var(--surface-hover);
+}
+
+tbody tr:hover {
+    background: var(--surface-active);
+}
+
+/* 输入框 */
+input,
+textarea,
+select {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+/* 下拉菜单 */
+.user-dropdown-menu,
+.dropdown-menu {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.dropdown-item {
+    color: var(--text-color);
+}
+
+.dropdown-item:hover {
+    background: var(--surface-hover);
+}
+
+/* 模态框 */
+.modal-content {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+}
+
+/* Toast提示 */
+.toast {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.toast.success {
+    background: var(--success-light);
+    border-color: var(--success-color);
+    color: #155724;
+}
+
+.toast.error {
+    background: var(--danger-light);
+    border-color: var(--danger-color);
+    color: #721c24;
+}
+
+.toast.warning {
+    background: var(--warning-light);
+    border-color: var(--warning-color);
+    color: #856404;
+}
+
+.toast.info {
+    background: var(--info-light);
+    border-color: var(--info-color);
+    color: #0c5460;
+}
+
+/* 代码/日志区域 */
+pre,
+code,
+#train-log,
+#fullscreen-train-log {
+    background: #f8f9fa;
+    color: #2c3e50;
+    border: 1px solid var(--border-color);
+}
+
+#train-log .log-line,
+#fullscreen-train-log .log-line {
+    color: #2c3e50;
+}
+
+/* 空状态提示 */
+.no-tasks-message,
+.empty-message {
+    color: var(--text-secondary);
+    background: var(--surface-hover);
+    border: 1px dashed var(--border-color);
+}
+
+/* 徽章 */
+.badge,
+.badge-active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* 分页控件 */
+.pagination-btn {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.pagination-btn:disabled {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+/* Canvas和标注区域 */
+#annotation-ui {
+    background: var(--background-color);
+}
+
+.annotation-sidebar {
+    background: var(--surface-color);
+    border-left: 1px solid var(--border-color);
+}
+
+/* 筛选控件 */
+.filter-controls {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* 面包屑 */
+.breadcrumb {
+    background: var(--surface-hover);
+    color: var(--text-secondary);
+}
+
+/* 滚动条（浅色主题） */
+::-webkit-scrollbar-track {
+    background: var(--surface-hover);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+}

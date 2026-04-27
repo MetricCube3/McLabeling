@@ -11,7 +11,11 @@
     <!-- 页面描述 -->
     <meta name="description" content="AI智能图像和视频标注平台，提升标注效率，支持多人协作">
 
-    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+    <!-- 模块化CSS（浅色主题） -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main-light.css') }}">
+    
+    <!-- 如果需要使用深色主题，可以替换为 main.css -->
+    <!-- <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}"> -->
 </head>
 <body>
     <div id="login-modal" class="modal-overlay">
@@ -23,7 +27,7 @@
                         <input type="text" id="username-input" placeholder="请输入用户名">
                     </div>
                     <div class="form-row">
-                        <label for="password-input">密码：</label>
+                        <label for="password-input">密&emsp;码：</label>
                         <input type="password" id="password-input" placeholder="请输入密码">
                     </div>
                     <button type="button" id="login-btn">登录</button>
@@ -60,7 +64,10 @@
                         <div class="dropdown-divider"></div>
                         <!-- 管理面板按钮 -->
                         <button id="admin-mode-btn" class="dropdown-admin-btn hidden">管理面板</button>
-                        <button id="logout-btn" class="dropdown-logout-btn">退出登录</button>
+                        <button id="logout-btn" class="dropdown-logout-btn">
+                            <span class="btn-icon">⎋</span>
+                            退出登录
+                        </button>
                     </div>
                 </div>
             </div>
@@ -142,11 +149,11 @@
                                     <label>🏷️ 初始标签体系</label>
                                     <div id="initial-labels-container" class="labels-container">
                                         <!-- 初始标签将通过JavaScript动态添加 -->
+                                        <button id="add-initial-label-btn" class="btn-add-label">
+                                            <span class="btn-icon">+</span>
+                                            添加
+                                        </button>
                                     </div>
-                                    <button id="add-initial-label-btn" class="btn-secondary">
-                                        <span class="btn-icon">➕</span>
-                                        添加初始标签
-                                    </button>
                                 </div>
 
                                 <div class="form-actions">
@@ -205,37 +212,9 @@
                             </div>
                         </div>
 
-                        <!-- 管理员功能 -->
+                        <!-- 管理员功能 - 已移至表格内联编辑 -->
                         <div id="label-admin-section" class="label-admin-section hidden">
-                            <div class="section-header">
-                                <h3>标签操作</h3>
-                                <span class="admin-badge">管理员功能</span>
-                            </div>
-
-                            <!-- 添加新标签 -->
-                            <div class="label-form-card">
-                                <h4 id="label-form-title">➕ 添加新标签</h4>
-                                <p id="label-form-hint" class="form-hint">请先选择项目后再添加标签。</p>
-                                <div class="form-group">
-                                    <label for="new-label-name">标签名称</label>
-                                    <input type="text" id="new-label-name" placeholder="请输入标签名称" class="form-input">
-                                    <button id="add-label-btn" class="btn-primary">添加标签</button>
-                                </div>
-                            </div>
-
-                            <!-- 编辑标签 -->
-                            <div class="label-edit-card hidden" id="label-edit-area">
-                                <h4>✏️ 编辑标签</h4>
-                                <input type="hidden" id="edit-label-id">
-                                <div class="form-group">
-                                    <label for="edit-label-name">新标签名称</label>
-                                    <input type="text" id="edit-label-name" placeholder="请输入新的标签名称" class="form-input">
-                                </div>
-                                <div class="form-actions">
-                                    <button id="save-edit-label-btn" class="btn-primary">保存修改</button>
-                                    <button id="cancel-edit-label-btn" class="btn-secondary">取消</button>
-                                </div>
-                            </div>
+                            <!-- 编辑和添加功能已集成到标签列表中 -->
                         </div>
 
                         <!-- 普通用户提示 -->
@@ -313,30 +292,6 @@
                             </div>
                         </div>
 
-                        <!-- 项目筛选 -->
-                        <div class="dataset-filter-section">
-                            <div class="section-header">
-                                <h3>🔍 数据集筛选</h3>
-                            </div>
-                            <div class="filter-controls">
-                                <div class="form-group">
-                                    <label for="dataset-project-filter">按项目筛选：</label>
-                                    <select id="dataset-project-filter" class="form-select">
-                                        <option value="">全部项目</option>
-                                        <!-- 项目选项将通过JavaScript动态加载 -->
-                                    </select>
-                                </div>
-                                <button id="apply-dataset-filter" class="btn-primary">
-                                    <span class="btn-icon">🔍</span>
-                                    应用筛选
-                                </button>
-                                <button id="clear-dataset-filter" class="btn-secondary">
-                                    <span class="btn-icon">🔄</span>
-                                    清除筛选
-                                </button>
-                            </div>
-                        </div>
-
                         <div class="dataset-overview-section">
                             <div class="section-header">
                                 <div class="header-left">
@@ -353,6 +308,12 @@
                                     </div>
                                 </div>
                                 <div class="header-right">
+                                    <div class="dataset-filter-inline">
+                                        <label for="dataset-project-filter">📂 </label>
+                                        <select id="dataset-project-filter" class="filter-select-inline">
+                                            <option value="">全部项目</option>
+                                        </select>
+                                    </div>
                                     <div class="pagination-controls">
                                         <button id="first-page-btn" class="pagination-btn" title="第一页">
                                             <span class="btn-icon">«</span>
@@ -370,10 +331,6 @@
                                             <span class="btn-icon">»</span>
                                         </button>
                                     </div>
-                                    <button id="refresh-datasets-btn" class="btn-secondary">
-                                        <span class="btn-icon">🔄</span>
-                                        刷新
-                                    </button>
                                 </div>
                             </div>
 
@@ -600,6 +557,7 @@
                 <!-- 任务列表区域 -->
                 <section id="video-selection">
                     <div id="breadcrumb" class="breadcrumb"></div>
+                    <div id="filter-controls-container" class="filter-controls-container"></div>
                     <div id="video-list" class="video-grid"></div>
                 </section>
 
@@ -616,8 +574,9 @@
                             <div class="shortcuts-list">
                                 <div class="shortcut-item"><kbd>←</kbd>/<kbd>A</kbd> 上一帧</div>
                                 <div class="shortcut-item"><kbd>→</kbd>/<kbd>D</kbd> 下一帧</div>
-                                <div class="shortcut-item"><kbd>Ctrl+S</kbd>/<kbd>S</kbd> 保存</div>
-                                <div class="shortcut-item"><kbd>Ctrl+R</kbd>/<kbd>R</kbd> 清空</div>
+                                <div class="shortcut-item"><kbd>S</kbd> 保存</div>
+                                <div class="shortcut-item"><kbd>R</kbd> 清空</div>
+                                <div class="shortcut-item"><kbd>X</kbd> 添加标注</div>
                                 <div class="shortcut-item"><kbd>ESC</kbd> 返回</div>
                             </div>
                         </div>
@@ -634,9 +593,9 @@
                         <aside id="sidebar">
                             <div class="sidebar-header">
                                 <h3>标注列表</h3>
-                                <button id="add-object-btn" class="sidebar-btn add-btn">
+                                <button id="add-object-btn" class="sidebar-btn add-btn" title="快捷键: X">
                                     <span class="btn-icon">+</span>
-                                    添加新实例
+                                    添加新标注
                                 </button>
                             </div>
                             <div id="object-list" class="object-list-container"></div>
@@ -696,28 +655,19 @@
 
         <!-- 管理面板 - 独立显示 -->
         <section id="admin-panel" class="hidden">
-            <!-- 管理面板头部 -->
-            <div class="admin-panel-header">
-                <div class="admin-header-left">
+            <div class="admin-panel-content">
+                <!-- 返回按钮 -->
+                <div class="admin-nav">
                     <button id="back-to-main-btn" class="back-to-main-btn">
                         <span class="btn-icon">←</span>
                         返回主界面
                     </button>
                 </div>
-                <div class="admin-header-center">
-                    <h2>管理面板</h2>
-                </div>
-                <div class="admin-header-right">
-                    <!-- 可以放置其他管理功能按钮 -->
-                </div>
-            </div>
-
-            <div class="admin-panel-content">
+                
                 <!-- 用户管理 -->
                 <div class="admin-section">
                     <h3>👥 用户管理</h3>
                     <div id="user-management-table" class="table-container"></div>
-
                     <div class="user-form">
                         <h4>📝 添加/编辑用户</h4>
                         <div class="form-group">
@@ -781,7 +731,11 @@
         <div id="toast-notification" class="hidden"></div>
 
     </div>
-    <script src="{{ url_for('static', path='js/app.js') }}"></script>
-    <script src="{{ url_for('static', path='js/model_management.js') }}"></script>
+    <!-- 新版模块化入口 -->
+    <script type="module" src="{{ url_for('static', path='js/core/app.js') }}"></script>
+    
+    <!-- 旧版入口（已重命名为app.legacy.js，如需回退可取消注释） -->
+    <!-- <script src="{{ url_for('static', path='js/app.legacy.js') }}"></script> -->
+    <!-- <script src="{{ url_for('static', path='js/model_management.js') }}"></script> -->
 </body>
 </html>

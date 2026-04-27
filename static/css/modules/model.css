@@ -1,0 +1,684 @@
+/**
+ * 模型管理模块样式
+ */
+
+#model-management-ui {
+    padding: 40px 60px;
+    width: 100%;
+}
+
+.model-management-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.model-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.model-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.model-section .section-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 22px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ========== 模型列表优化 ========== */
+
+.model-list-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 25px;
+}
+
+.model-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.model-list-header h4 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.current-active-model {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(0, 188, 212, 0.1), rgba(0, 188, 212, 0.05));
+    border: 1px solid rgba(0, 188, 212, 0.3);
+    border-radius: 6px;
+}
+
+.active-model-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.active-model-name {
+    font-size: 14px;
+    color: var(--text-color);
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+.active-model-name.active {
+    color: var(--primary-color);
+}
+
+/* 模型列表 - 网格布局 */
+.models-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 15px;
+}
+
+.model-item {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.model-item:hover {
+    background: linear-gradient(135deg, rgba(0, 188, 212, 0.1), rgba(0, 188, 212, 0.05));
+    border-color: var(--primary-color);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 188, 212, 0.2);
+}
+
+.model-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.model-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+}
+
+.model-details {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.model-size,
+.model-time {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.model-size::before {
+    content: '📁';
+}
+
+.model-time::before {
+    content: '🕒';
+}
+
+/* 模型操作按钮 */
+.model-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.model-actions .btn-small {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+/* ========== 训练参数优化 ========== */
+
+.model-train-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 25px;
+}
+
+.model-train-card h4 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.train-description {
+    color: var(--text-secondary);
+    margin: 0 0 25px 0;
+    font-size: 14px;
+}
+
+/* 训练参数容器 */
+.train-params-group {
+    background: linear-gradient(135deg, rgba(0, 188, 212, 0.05), rgba(0, 188, 212, 0.02));
+    border: 2px dashed rgba(0, 188, 212, 0.3);
+    border-radius: 10px;
+    padding: 30px 25px 25px;
+    margin: 25px 0;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.train-params-group::before {
+    content: '⚙️ 训练参数设置';
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: var(--surface-color);
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.train-params-group .form-group {
+    margin-bottom: 0;
+}
+
+.train-params-group .form-group label {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 8px;
+    display: block;
+    font-size: 14px;
+}
+
+.train-params-group .form-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.train-params-group .form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* 训练控制按钮 */
+.train-controls {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.train-btn {
+    flex: 1;
+    min-height: 48px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .models-list {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    #model-management-ui {
+        padding: 20px;
+    }
+    
+    .model-section {
+        padding: 20px;
+    }
+    
+    .models-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .train-params-group {
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+    
+    .model-list-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
+
+/* ========== 训练日志区域 ========== */
+
+.train-log-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(0, 188, 212, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.train-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.train-log-header h4 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.expand-log-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.expand-log-btn:hover {
+    background: rgba(0, 188, 212, 0.1);
+}
+
+#train-log {
+    height: 300px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #e0e0e0;
+    line-height: 1.6;
+}
+
+.log-line {
+    margin: 3px 0;
+    padding: 2px 0;
+}
+
+#train-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+#train-log::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+#train-log::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+#train-log::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* ========== 全屏日志模态框 ========== */
+
+#fullscreen-log-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fullscreen-log-container {
+    width: 90vw;
+    height: 90vh;
+    background: var(--surface-color, #ffffff);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.fullscreen-log-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: #ffffff;
+}
+
+.fullscreen-log-header h3 {
+    margin: 0;
+    color: #000000;
+    font-size: 18px;
+}
+
+.fullscreen-log-header .close-modal-btn,
+.training-results-header .close-modal-btn {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    z-index: 10;
+    color: #333333;
+    font-size: 18px;
+    padding: 4px;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.close-modal-btn:hover {
+    color: var(--text-color);
+    transform: scale(1.1);
+}
+
+#fullscreen-train-log {
+    flex: 1;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #e0e0e0;
+    line-height: 1.6;
+}
+
+#fullscreen-train-log::-webkit-scrollbar {
+    width: 10px;
+}
+
+#fullscreen-train-log::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+#fullscreen-train-log::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 5px;
+}
+
+#fullscreen-train-log::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+#fullscreen-train-log .log-line {
+    margin: 3px 0;
+    padding: 2px 0;
+}
+
+/* ========== 训练结果查看模态框 ========== */
+
+#training-results-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.training-results-container {
+    width: 90vw;
+    height: 90vh;
+    background: var(--surface-color, #ffffff);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.training-results-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: #ffffff;
+}
+
+.training-results-header h3 {
+    margin: 0;
+    color: #000000;
+    font-size: 18px;
+}
+
+.training-results-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    align-content: start;
+}
+
+.result-image-item {
+    background: var(--surface-hover, #f8f9fa);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.result-image-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+.result-image-item h4 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: bold;
+    background: rgba(0, 188, 212, 0.12);
+    padding: 4px 10px;
+    border-radius: 4px;
+    width: 100%;
+    text-align: center;
+}
+
+.result-image-item img {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    display: block;
+}
+
+/* ========== 训练历史 ========== */
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: background 0.2s;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.history-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.history-name {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.history-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.history-size {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.history-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.badge-active {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(0, 188, 212, 0.2), rgba(0, 188, 212, 0.1));
+    color: var(--primary-color);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* ========== 图片灯箱（Lightbox） ========== */
+
+.image-lightbox-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 11000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+
+.image-lightbox-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    position: relative;
+}
+
+.image-lightbox-img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    object-fit: contain;
+}
+
+.image-lightbox-caption {
+    position: absolute;
+    bottom: -40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    font-size: 14px;
+    padding: 8px;
+}
+
+.image-lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: #fff;
+    font-size: 36px;
+    font-weight: 300;
+    cursor: pointer;
+    z-index: 11001;
+    background: none;
+    border: none;
+    line-height: 1;
+    transition: transform 0.2s;
+}
+
+.image-lightbox-close:hover {
+    transform: scale(1.15);
+}
+
+.empty-message {
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}

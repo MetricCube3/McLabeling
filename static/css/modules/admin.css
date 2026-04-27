@@ -1,0 +1,468 @@
+/**
+ * 管理面板样式
+ */
+
+#admin-panel {
+    width: 100%;
+    height: 100vh;
+    background: var(--background-color);
+    overflow-y: auto;
+    padding: 0;
+    margin: 0;
+}
+
+/* 管理面板导航 */
+.admin-nav {
+    margin-bottom: 30px;
+}
+
+.back-to-main-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 188, 212, 0.2);
+}
+
+.back-to-main-btn:hover {
+    background: #0097a7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+}
+
+.back-to-main-btn:active {
+    transform: translateY(0);
+}
+
+.back-to-main-btn .btn-icon {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.back-to-main-btn:hover .btn-icon {
+    transform: translateX(-3px);
+}
+
+/* 管理面板内容 */
+.admin-panel-content {
+    width: 100%;
+    padding: 40px 60px 60px 60px;
+    box-sizing: border-box;
+}
+
+/* 管理区域 */
+.admin-section {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 40px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-section h3 {
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-section h4 {
+    color: var(--text-color);
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* 表单样式 */
+.admin-section .form-group {
+    margin-bottom: 20px;
+    max-width: 600px;
+}
+
+.admin-section label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.admin-section input,
+.admin-section select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.admin-section input:focus,
+.admin-section select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+/* 按钮样式 */
+.admin-section button {
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.admin-section button:hover {
+    background: #0097a7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+}
+
+.admin-section button:active {
+    transform: translateY(0);
+}
+
+/* 角色复选框 */
+.roles-checkbox-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.checkmark {
+    display: none;
+}
+
+/* 表格容器 */
+.table-container {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-color);
+}
+
+.table-container thead {
+    background: var(--surface-hover);
+}
+
+.table-container th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.table-container td {
+    padding: 15px;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-container tr:hover {
+    background: var(--surface-hover);
+}
+
+/* 操作按钮 */
+.admin-action-btn {
+    padding: 6px 14px;
+    margin: 0 4px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.admin-action-btn.edit {
+    background: var(--primary-color);
+    color: white;
+}
+
+.admin-action-btn.edit:hover {
+    background: #0097a7;
+}
+
+.admin-action-btn.delete {
+    background: #f44336;
+    color: white;
+}
+
+.admin-action-btn.delete:hover {
+    background: #d32f2f;
+}
+
+/* 密码显示 */
+.password-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: monospace;
+}
+
+.password-text {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: var(--text-color);
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.password-dots {
+    letter-spacing: 2px;
+    color: var(--text-color);
+}
+
+.password-text.hidden,
+.password-dots.hidden {
+    display: none;
+}
+
+.toggle-password-btn {
+    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toggle-password-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+}
+
+.eye-icon {
+    font-size: 16px;
+    display: block;
+    line-height: 1;
+}
+
+/* 管理员徽章 */
+.admin-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* 受保护标记 */
+.protected-note {
+    color: #666;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* 角色说明 */
+.role-notice {
+    margin-top: 8px;
+}
+
+.role-notice small {
+    color: #666;
+    font-size: 12px;
+}
+
+/* 编辑提示 */
+.edit-notice {
+    padding: 10px 15px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    margin: 15px 0;
+    animation: slideDown 0.3s ease;
+}
+
+.edit-notice small {
+    color: #856404;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 表单按钮 */
+.admin-button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.user-form {
+    margin-top: 40px;
+    padding-top: 40px;
+    border-top: 2px solid var(--border-color);
+    max-width: 800px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+/* 按钮样式 */
+.btn-primary {
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #0097a7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+}
+
+.btn-secondary {
+    padding: 12px 24px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .admin-panel-content {
+        padding: 30px 20px;
+    }
+    
+    .admin-nav {
+        margin-bottom: 20px;
+    }
+    
+    .back-to-main-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .admin-section {
+        padding: 25px 20px;
+    }
+    
+    .admin-button-group,
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .admin-button-group button,
+    .form-actions button {
+        width: 100%;
+    }
+    
+    .roles-checkbox-group {
+        flex-direction: column;
+    }
+    
+    .user-form,
+    .admin-section .form-group {
+        max-width: 100%;
+    }
+}

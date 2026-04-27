@@ -1,0 +1,557 @@
+/**
+ * 数据集管理模块样式
+ * 参考项目管理页面风格
+ */
+
+/* 数据集管理主容器 */
+#dataset-management-ui {
+    padding: 40px 60px;
+    width: 100%;
+}
+
+.dataset-management-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* 上传部分 */
+.upload-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.upload-section .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.upload-section .section-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 22px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upload-form-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 25px 30px;
+}
+
+.upload-form-card h4 {
+    margin: 0 0 10px 0;
+    color: var(--text-color);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.upload-description {
+    margin: 0 0 20px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* 独立的表单组样式，不影响其他页面 */
+#dataset-management-ui .form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#dataset-management-ui .form-group label {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+#dataset-management-ui .form-select {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    background: white;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#dataset-management-ui .form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.upload-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.file-input {
+    flex: 1;
+    max-width: 400px;
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+}
+
+.upload-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #00BCD4 0%, #00ACC1 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.upload-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.upload-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.3);
+}
+
+.upload-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.upload-status {
+    margin-top: 15px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.upload-status.info {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #90caf9;
+}
+
+.upload-status.success {
+    background: #e8f5e9;
+    color: #388e3c;
+    border: 1px solid #81c784;
+}
+
+.upload-status.error {
+    background: #ffebee;
+    color: #d32f2f;
+    border: 1px solid #ef5350;
+}
+
+/* 内联筛选控件 */
+.dataset-filter-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 15px;
+}
+
+.dataset-filter-inline label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.filter-select-inline {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+    color: var(--text-color);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.filter-select-inline:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.1);
+}
+
+.btn-filter {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.btn-filter:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* 数据集列表部分 */
+.dataset-overview-section {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.dataset-overview-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.dataset-overview-section .section-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.dataset-overview-section .section-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.dataset-stats-summary {
+    display: flex;
+    gap: 20px;
+}
+
+.stats-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 14px;
+}
+
+.stats-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.stats-value {
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.header-right {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* 分页控件 */
+.pagination-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pagination-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    padding: 0 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* 数据集表格 */
+.dataset-list-container {
+    min-height: 200px;
+}
+
+.dataset-management-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.dataset-management-table thead {
+    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    color: #1565C0;
+}
+
+.dataset-management-table th {
+    padding: 15px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.dataset-management-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.dataset-management-table tbody tr:hover {
+    background: rgba(0, 188, 212, 0.05);
+}
+
+.dataset-management-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.dataset-number-cell {
+    font-weight: 600;
+    color: #6c757d;
+    width: 60px;
+}
+
+.dataset-name-cell {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.dataset-icon {
+    margin-right: 8px;
+}
+
+.dataset-project-cell {
+    width: 150px;
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dataset-type-cell {
+    width: 100px;
+}
+
+.type-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.type-badge.video {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.type-badge.image_task {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.dataset-time-cell {
+    color: var(--text-secondary);
+    font-size: 13px;
+    width: 160px;
+}
+
+.dataset-size-cell {
+    color: var(--text-secondary);
+    font-size: 13px;
+    width: 120px;
+}
+
+.dataset-actions-cell {
+    width: 100px;
+    text-align: center;
+}
+
+/* 数据集操作按钮 */
+.dataset-action-btn {
+    white-space: nowrap;
+    padding: 8px 16px;
+    border: 1px solid #ff4d4f;
+    border-radius: 6px;
+    background: white;
+    color: #ff4d4f;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.dataset-action-btn:hover {
+    background: #ff4d4f;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 77, 79, 0.3);
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: var(--text-secondary);
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* 管理员徽章 */
+.admin-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    #dataset-management-ui {
+        padding: 20px;
+    }
+    
+    .dataset-management-content {
+        gap: 20px;
+    }
+    
+    .upload-section,
+    .dataset-filter-section,
+    .dataset-overview-section {
+        padding: 20px;
+    }
+    
+    .upload-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .file-input,
+    .upload-btn {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-controls .form-group {
+        width: 100%;
+    }
+    
+    .dataset-overview-section .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .dataset-stats-summary {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .pagination-controls {
+        flex-wrap: wrap;
+    }
+    
+    .dataset-management-table {
+        font-size: 13px;
+    }
+    
+    .dataset-management-table th,
+    .dataset-management-table td {
+        padding: 10px;
+    }
+    
+    .dataset-action-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+}
