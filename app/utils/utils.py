@@ -88,7 +88,7 @@ def load_extraction_info(video_path, db):
         return None
     
     try:
-        from models import ExtractionInfo
+        from app.models.models import ExtractionInfo
         extraction_info = db.query(ExtractionInfo).filter(
             ExtractionInfo.video_path == video_path
         ).first()
@@ -120,7 +120,7 @@ def save_extraction_info(video_path, info, db):
         return False
     
     try:
-        from models import ExtractionInfo
+        from app.models.models import ExtractionInfo
         
         # 检查是否已存在
         existing = db.query(ExtractionInfo).filter(
@@ -233,7 +233,7 @@ def perform_frame_extraction(video_path, video_abs_path, target_fps, username, p
         
         # 更新任务统计信息（抽帧后重置标注数据）
         try:
-            from models import AnnotationTask
+            from app.models.models import AnnotationTask
             task = db.query(AnnotationTask).filter(AnnotationTask.task_path == video_path).first()
             
             if task:

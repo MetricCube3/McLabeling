@@ -12,8 +12,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
-from models import AnnotationTask
-from utils import VIDEO_DIR, IMAGE_DIR, SUCCESS_DIR
+from app.models.models import AnnotationTask
+from app.utils.utils import VIDEO_DIR, IMAGE_DIR, SUCCESS_DIR
 import logging
 
 logger = logging.getLogger(__name__)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
-    from database import SessionLocal
+    from app.core.database import SessionLocal
     
     print("=" * 80)
     print("批量更新任务统计信息")

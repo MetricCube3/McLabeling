@@ -8,24 +8,23 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db, get_db, create_default_admin
+from app.core.database import init_db, get_db, create_default_admin
+from app.core.config import init_directories, DATA_DIR, VIDEO_DIR, IMAGE_DIR, ANNOTATED_DIR, STATIC_DIR
 from sqlalchemy.orm import Session
 
 # 导入路由
-from routers import (
-    auth_router,
-    project_router,
-    user_router,
-    task_router,
-    video_router,
-    annotation_router,
-    admin_router,
-    segment_router,
-    browse_router,
-    model_router
-)
-from routers.admin_export import router as admin_export_router
-from routers.admin_project_export import router as admin_project_export_router
+from app.api.endpoints.auth import router as auth_router
+from app.api.endpoints.projects import router as project_router
+from app.api.endpoints.users import router as user_router
+from app.api.endpoints.tasks import router as task_router
+from app.api.endpoints.videos import router as video_router
+from app.api.endpoints.annotations import router as annotation_router
+from app.api.endpoints.admin import router as admin_router
+from app.api.endpoints.segment import router as segment_router
+from app.api.endpoints.browse import router as browse_router
+from app.api.endpoints.model import router as model_router
+from app.api.endpoints.admin_export import router as admin_export_router
+from app.api.endpoints.admin_project_export import router as admin_project_export_router
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -47,28 +46,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 路径定义 ---
-DATA_DIR = 'data'
-VIDEO_DIR = os.path.join(DATA_DIR, 'videos')
-EXTRACTION_INFO_DIR = os.path.join(DATA_DIR, 'extraction_info')
-IMAGE_DIR = os.path.join(DATA_DIR, 'images')
-IMAGE_ZIP_DIR = os.path.join(DATA_DIR, 'image_zips')
-ANNOTATED_DIR = os.path.join(DATA_DIR, 'annotated')
-SUCCESS_DIR = os.path.join(ANNOTATED_DIR, 'success')
-REVIEW_DIR = os.path.join(ANNOTATED_DIR, 'review')
-STATIC_DIR = 'static'
-COVERS_DIR = os.path.join(STATIC_DIR, 'covers')
-TEMP_DIR = os.path.join(STATIC_DIR, 'temp')
-
-# --- 创建目录 ---
-os.makedirs(VIDEO_DIR, exist_ok=True)
-os.makedirs(EXTRACTION_INFO_DIR, exist_ok=True)
-os.makedirs(IMAGE_DIR, exist_ok=True)
-os.makedirs(IMAGE_ZIP_DIR, exist_ok=True)
-os.makedirs(SUCCESS_DIR, exist_ok=True)
-os.makedirs(REVIEW_DIR, exist_ok=True)
-os.makedirs(COVERS_DIR, exist_ok=True)
-os.makedirs(TEMP_DIR, exist_ok=True)
+# 初始化目录
+init_directories()
 
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

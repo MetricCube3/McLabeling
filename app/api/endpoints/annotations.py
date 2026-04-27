@@ -11,9 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from database import get_db
-from models import AnnotationTask, ReviewTask
-from utils import VIDEO_DIR, IMAGE_DIR, SUCCESS_DIR, REVIEW_DIR, TEMP_DIR, ANNOTATED_DIR
+from app.core.database import get_db
+from app.models.models import AnnotationTask, ReviewTask
+from app.utils.utils import VIDEO_DIR, IMAGE_DIR, SUCCESS_DIR, REVIEW_DIR, TEMP_DIR, ANNOTATED_DIR
 import logging
 import cv2
 
@@ -44,14 +44,14 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
     """保存YOLO格式标注（优化版，参照app.py）"""
     try:
         # 验证必需参数
-        if not all([request.status, request.objects is not None, request.frameUrl, 
-                   request.imageWidth, request.imageHeight]):
+        if not all([request.status, request.objects is not None, request.frameUrl,
+                    request.imageWidth, request.imageHeight]):
             raise HTTPException(status_code=400, detail="缺少必需参数")
-        
+
         frame_url = request.frameUrl
         image_width = request.imageWidth
         image_height = request.imageHeight
-        
+
         # 处理审核模式：videoPath为null，从overwrite_path提取信息
         if request.overwrite_path and not request.videoPath:
             # overwrite_path格式: success/project_name/task_name/images/image_file.jpg
@@ -79,20 +79,20 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
             video_path = request.videoPath
             if not video_path:
                 raise HTTPException(status_code=400, detail="videoPath和overwrite_path不能同时为空")
-        
+
         # 检测任务类型
         is_video_task = os.path.exists(os.path.join(VIDEO_DIR, video_path)) if video_path else False
         is_image_task = os.path.isdir(os.path.join(IMAGE_DIR, video_path)) if video_path else False
-        
+
         # 审核模式下，即使找不到原始任务文件也允许继续（直接操作已标注的文件）
         if not (is_video_task or is_image_task) and not request.overwrite_path:
             logger.error(f"Task not found: {video_path}")
             raise HTTPException(status_code=404, detail="任务不存在")
-        
+
         # 检查是否是抽帧图片
         is_extracted_frame = '/extracted/' in frame_url
         logger.info(f"Saving annotation: task={video_path}, extracted={is_extracted_frame}, frame_url={frame_url}")
-        
+
         # 获取项目名称（如果不是审核模式或审核模式但未从overwrite_path提取）
         if not (request.overwrite_path and not request.videoPath):
             # 首先尝试从数据库获取
@@ -110,7 +110,7 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                     project_name = 'default'
                     logger.warning(f"No project found in video_path '{video_path}', using 'default'")
         # 如果是审核模式，project_name已在上面从overwrite_path中提取
-        
+
         # 处理覆盖保存（审核模式）
         if request.overwrite_path:
             image_to_overwrite = os.path.join(ANNOTATED_DIR, request.overwrite_path)
@@ -122,12 +122,12 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
         else:
             # 新文件保存逻辑
             base_target_dir = SUCCESS_DIR if request.status == 'success' else REVIEW_DIR
-            
+
             if is_video_task:
                 task_filename = os.path.splitext(os.path.basename(video_path))[0]
             else:
                 task_filename = os.path.basename(video_path)
-            
+
             # 创建包含项目名称的目录
             video_specific_dir = os.path.join(base_target_dir, project_name, task_filename)
             images_dir = os.path.join(video_specific_dir, 'images')
@@ -136,7 +136,7 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
             os.makedirs(images_dir, exist_ok=True)
             os.makedirs(labels_dir, exist_ok=True)
             os.makedirs(labels_bbox_dir, exist_ok=True)
-            
+
             # 解析输出文件名 - 支持多种格式
             if is_video_task:
                 # 优先使用前端传递的帧索引
@@ -174,28 +174,28 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                         output_basename = f"{task_name_safe}_img_{image_index}"
                     else:
                         raise HTTPException(status_code=400, detail="无法从文件名中确定图片索引")
-        
+
         # 通用保存逻辑，对frame_url进行URL解码（处理中文路径）
         source_frame_path = unquote(frame_url.lstrip('/'))
         target_image_path = os.path.join(images_dir, f"{output_basename}.jpg")
         label_filepath = os.path.join(labels_dir, f"{output_basename}.txt")
         label_bbox_filepath = os.path.join(labels_bbox_dir, f"{output_basename}.txt")
-        
+
         # 过滤有效对象（必须有maskData）
         valid_objects = [obj for obj in request.objects if obj.get('maskData')]
-        
+
         if len(valid_objects) == 0:
             # 无标注对象，删除相关文件
             deleted_files = []
-            
+
             if os.path.exists(label_filepath):
                 os.remove(label_filepath)
                 deleted_files.append("分割标注文件")
-            
+
             if os.path.exists(label_bbox_filepath):
                 os.remove(label_bbox_filepath)
                 deleted_files.append("边界框标注文件")
-            
+
             # 关键修改：对于抽帧图片，不删除原始图片
             if os.path.exists(target_image_path):
                 if is_extracted_frame:
@@ -206,13 +206,13 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                 else:
                     os.remove(target_image_path)
                     deleted_files.append("图片文件")
-            
+
             # 对于抽帧图片，不删除源文件
             if not request.overwrite_path and os.path.exists(source_frame_path) and not is_extracted_frame:
                 if source_frame_path.startswith('static/temp/'):
                     os.remove(source_frame_path)
                     deleted_files.append("临时文件")
-            
+
             message = "图像未标注，并清空已有标注缓存" if deleted_files else "图像未标注"
         else:
             # 有标注对象
@@ -232,7 +232,7 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                 else:
                     if os.path.exists(source_frame_path):
                         shutil.move(source_frame_path, target_image_path)
-            
+
             # 保存分割标注（多边形格式）
             with open(label_filepath, 'w', encoding='utf-8') as f:
                 for obj in valid_objects:
@@ -250,42 +250,43 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                             normalized_coords.extend([f"{norm_x:.6f}", f"{norm_y:.6f}"])
                         if normalized_coords:
                             f.write(f"{class_id} {' '.join(normalized_coords)}\n")
-            
+
             # 保存边界框标注（YOLO格式）
             with open(label_bbox_filepath, 'w', encoding='utf-8') as f_bbox:
                 for obj in valid_objects:
                     class_id = obj.get('classId', 0)
                     box_data = obj.get('boxData')
-                    
+
                     if box_data and len(box_data) == 4:
                         # 提取边界框坐标 [x1, y1, x2, y2]
                         x1, y1, x2, y2 = box_data
-                        
+
                         # 计算边界框中心点坐标
                         center_x = (x1 + x2) / 2.0
                         center_y = (y1 + y2) / 2.0
-                        
+
                         # 计算边界框宽度和高度
                         width = x2 - x1
                         height = y2 - y1
-                        
+
                         # 归一化坐标
                         center_x_norm = center_x / image_width
                         center_y_norm = center_y / image_height
                         width_norm = width / image_width
                         height_norm = height / image_height
-                        
+
                         # 确保归一化坐标在[0,1]范围内
                         center_x_norm = max(0.0, min(1.0, center_x_norm))
                         center_y_norm = max(0.0, min(1.0, center_y_norm))
                         width_norm = max(0.0, min(1.0, width_norm))
                         height_norm = max(0.0, min(1.0, height_norm))
-                        
+
                         # 写入YOLO格式的边界框标注
-                        f_bbox.write(f"{class_id} {center_x_norm:.6f} {center_y_norm:.6f} {width_norm:.6f} {height_norm:.6f}\n")
-            
+                        f_bbox.write(
+                            f"{class_id} {center_x_norm:.6f} {center_y_norm:.6f} {width_norm:.6f} {height_norm:.6f}\n")
+
             message = "标注覆盖保存成功" if request.overwrite_path else "标注保存成功"
-        
+
         # 更新任务统计信息到数据库（异步更新，提升保存性能）
         try:
             task_type = 'video' if is_video_task else 'image'
@@ -294,10 +295,10 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
         except Exception as e:
             # 统计更新失败不影响保存操作
             logger.warning(f"Failed to update stats for task {video_path}: {e}")
-        
+
         logger.info(f"Annotation saved: {output_basename}, objects: {len(valid_objects)}")
         return {"message": message}
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -308,13 +309,13 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
 def update_task_stats(db: Session, task_path: str, task_type: str, project_name: str):
     """更新任务的统计信息到数据库"""
     from datetime import datetime
-    
+
     try:
         stats = _calculate_stats(task_path, task_type, project_name)
-        
+
         # 查找或创建任务记录
         task = db.query(AnnotationTask).filter(AnnotationTask.task_path == task_path).first()
-        
+
         if not task:
             task = AnnotationTask(
                 task_path=task_path,
@@ -327,7 +328,7 @@ def update_task_stats(db: Session, task_path: str, task_type: str, project_name:
                 stats_updated_at=datetime.utcnow()
             )
             db.add(task)
-            
+
             # 注意：不从video_pool中删除
             # 保留在待标注池中，等待管理员重新分配用户后再删除
             logger.info(f"Created task record for {task_path}, keeping in video_pool for reassignment")
@@ -338,7 +339,7 @@ def update_task_stats(db: Session, task_path: str, task_type: str, project_name:
             task.label_counts = stats['label_counts']
             task.last_annotated_frame = stats['last_annotated_frame']
             task.stats_updated_at = datetime.utcnow()
-        
+
         db.commit()
         db.refresh(task)
         return stats
@@ -357,7 +358,7 @@ def _calculate_stats(task_path: str, task_type: str, project_name: str) -> dict:
         'label_counts': {},
         'last_annotated_frame': -1
     }
-    
+
     # ===== 计算总图片数 =====
     if task_type == 'video':
         video_filename = os.path.splitext(os.path.basename(task_path))[0]
@@ -365,8 +366,8 @@ def _calculate_stats(task_path: str, task_type: str, project_name: str) -> dict:
         extracted_dir = os.path.join(VIDEO_DIR, project_name, video_filename, 'extracted')
         if os.path.exists(extracted_dir):
             stats['total_images'] = len([f for f in os.listdir(extracted_dir)
-                                        if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-        
+                                         if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+
         # 如果抽帧目录不存在或为空，从视频文件读取帧数
         if stats['total_images'] == 0:
             video_abs_path = os.path.join(VIDEO_DIR, task_path)
@@ -378,7 +379,7 @@ def _calculate_stats(task_path: str, task_type: str, project_name: str) -> dict:
                     cap.release()
                 except Exception as e:
                     logger.warning(f"Failed to get video frame count: {e}")
-        
+
         annotation_dir = os.path.join(SUCCESS_DIR, project_name, video_filename)
     else:
         # 图片任务：统计任务目录下的所有图片
@@ -388,10 +389,10 @@ def _calculate_stats(task_path: str, task_type: str, project_name: str) -> dict:
                 for filename in filenames:
                     if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
                         stats['total_images'] += 1
-        
+
         task_name = os.path.basename(task_path)
         annotation_dir = os.path.join(SUCCESS_DIR, project_name, task_name)
-    
+
     # ===== 计算已标注数据 =====
     if os.path.exists(annotation_dir):
         # 统计已标注图片
@@ -399,7 +400,7 @@ def _calculate_stats(task_path: str, task_type: str, project_name: str) -> dict:
         if os.path.exists(images_dir):
             stats['annotated_images'] = len([f for f in os.listdir(images_dir)
                                              if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-        
+
         # 统计标签
         labels_dir = os.path.join(annotation_dir, 'labels')
         if os.path.exists(labels_dir):
@@ -418,23 +419,23 @@ def _calculate_stats(task_path: str, task_type: str, project_name: str) -> dict:
                                         class_id = parts[0]
                                         stats['label_counts'][class_id] = stats['label_counts'].get(class_id, 0) + 1
                                         stats['total_labels'] += 1
-                        
+
                         # 解析索引
                         if task_type == 'video':
                             match = re.search(r'_frame_(\d+)\.txt$', label_file) or \
-                                   re.search(r'frame_(\d+)\.txt$', label_file)
+                                    re.search(r'frame_(\d+)\.txt$', label_file)
                         else:
                             match = re.search(r'_img_(\d+)\.txt$', label_file)
-                        
+
                         if match:
                             index = int(match.group(1))
                             if index > max_index:
                                 max_index = index
                     except:
                         pass
-            
+
             stats['last_annotated_frame'] = max_index
-    
+
     return stats
 
 
@@ -443,31 +444,31 @@ def get_annotation(path: str = Query(...), db: Session = Depends(get_db)):
     """获取标注数据 - 用于审核页面"""
     if not path:
         raise HTTPException(status_code=400, detail="路径不能为空")
-    
+
     try:
         # 路径格式: success/project_name/task_name/images/image_name.jpg
         image_path_on_disk = os.path.abspath(os.path.join(ANNOTATED_DIR, path))
-        
+
         # 安全检查
         if not image_path_on_disk.startswith(os.path.abspath(ANNOTATED_DIR)):
             raise HTTPException(status_code=403, detail="访问被拒绝")
-        
+
         if not os.path.exists(image_path_on_disk):
             raise HTTPException(status_code=404, detail="标注图片不存在")
-        
+
         # 从路径中提取项目信息
         path_parts = path.split('/')
         project_name = None
         if len(path_parts) >= 3:  # success/project_name/task_name/images/...
             project_name = path_parts[1]  # 项目名称在第二个位置
-        
+
         # 构建标注文件路径
         label_path_on_disk = image_path_on_disk.replace('/images/', '/labels/').replace('\\images\\', '\\labels\\')
         label_path_on_disk = os.path.splitext(label_path_on_disk)[0] + '.txt'
-        
+
         if not os.path.exists(label_path_on_disk):
             raise HTTPException(status_code=404, detail="标注文件不存在")
-        
+
         # 读取图片尺寸
         try:
             img = cv2.imread(image_path_on_disk)
@@ -476,7 +477,7 @@ def get_annotation(path: str = Query(...), db: Session = Depends(get_db)):
             height, width = img.shape[:2]
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"无法读取图片尺寸: {str(e)}")
-        
+
         # 读取标注数据（归一化坐标转像素坐标）
         annotations = []
         try:
@@ -485,10 +486,10 @@ def get_annotation(path: str = Query(...), db: Session = Depends(get_db)):
                     parts = line.strip().split()
                     if len(parts) < 3:
                         continue
-                    
+
                     class_id = int(parts[0])
                     coords = [float(c) for c in parts[1:]]
-                    
+
                     # 归一化坐标转像素坐标
                     pixel_coords = []
                     for i in range(0, len(coords), 2):
@@ -496,50 +497,50 @@ def get_annotation(path: str = Query(...), db: Session = Depends(get_db)):
                             x = coords[i] * width
                             y = coords[i + 1] * height
                             pixel_coords.append([x, y])
-                    
+
                     annotations.append({
                         "classId": class_id,
                         "maskData": [pixel_coords]
                     })
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"解析标注文件失败: {str(e)}")
-        
+
         # 从文件名提取帧索引和任务信息
         filename = os.path.basename(path)
-        
+
         # 支持两种文件名格式
         match_video = re.match(r'(.+)_frame_(\d+)\.(jpg|jpeg|png)', filename, re.IGNORECASE)
         match_image = re.match(r'(.+)_img_(\d+)\.(jpg|jpeg|png)', filename, re.IGNORECASE)
-        
+
         frame_index = 0
         original_task_path = None
         original_total_frames = 0
         task_type = 'video'
-        
+
         if match_video:
             original_task_name_safe = match_video.group(1)
             frame_index = int(match_video.group(2))
             task_type = 'video'
-            
+
             # 查找原始视频任务路径
             if project_name:
                 # 在数据库中查找任务
                 tasks = db.query(AnnotationTask).filter(
                     AnnotationTask.project_name == project_name
                 ).all()
-                
+
                 for task in tasks:
                     task_name_no_ext = os.path.splitext(os.path.basename(task.task_path))[0]
                     if re.sub(r'[^a-zA-Z0-9_.-]', '_', task_name_no_ext) == original_task_name_safe:
                         original_task_path = task.task_path
                         original_total_frames = task.total_images or 0
                         break
-        
+
         elif match_image:
             original_task_name_safe = match_image.group(1)
             frame_index = int(match_image.group(2))
             task_type = 'image'
-        
+
         # 返回数据（与app.py格式一致）
         return {
             "annotations": annotations,  # 前端期望的字段名
@@ -549,7 +550,7 @@ def get_annotation(path: str = Query(...), db: Session = Depends(get_db)):
             "totalFrames": original_total_frames,
             "taskType": task_type
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -563,20 +564,20 @@ def delete_annotation(request: DeleteAnnotationRequest, db: Session = Depends(ge
     try:
         if not request.user:
             raise HTTPException(status_code=401, detail="用户未指定")
-        
+
         if not request.path:
             raise HTTPException(status_code=400, detail="路径不能为空")
-        
+
         # 解析路径
         parts = request.path.split('/')
         if len(parts) < 5:
             raise HTTPException(status_code=400, detail="路径格式不正确")
-        
+
         status_dir = parts[0]
         project_name = parts[1]
         task_name = parts[2]
         image_filename = parts[-1]
-        
+
         # 构建文件路径
         if status_dir == 'success':
             base_dir = SUCCESS_DIR
@@ -584,46 +585,46 @@ def delete_annotation(request: DeleteAnnotationRequest, db: Session = Depends(ge
             base_dir = REVIEW_DIR
         else:
             raise HTTPException(status_code=400, detail="无效的状态目录")
-        
+
         # 删除图片和标注文件
         image_path = os.path.join(base_dir, project_name, task_name, 'images', image_filename)
         label_filename = os.path.splitext(image_filename)[0] + '.txt'
         label_path = os.path.join(base_dir, project_name, task_name, 'labels', label_filename)
         label_bbox_path = os.path.join(base_dir, project_name, task_name, 'labels_bbox', label_filename)
-        
+
         deleted = []
         if os.path.exists(image_path):
             os.remove(image_path)
             deleted.append("图片")
-        
+
         if os.path.exists(label_path):
             os.remove(label_path)
             deleted.append("分割标注")
-        
+
         if os.path.exists(label_bbox_path):
             os.remove(label_bbox_path)
             deleted.append("边界框标注")
-        
+
         # 更新原始标注任务的统计信息
         try:
             # 从文件名反推原始任务路径
             # 文件名格式: {task_name}_frame_{index}.jpg 或 {task_name}_img_{index}.jpg
             match_video = re.match(r'(.+)_frame_\d+\.(jpg|jpeg|png)', image_filename, re.IGNORECASE)
             match_image = re.match(r'(.+)_img_\d+\.(jpg|jpeg|png)', image_filename, re.IGNORECASE)
-            
+
             if match_video or match_image:
                 task_name_safe = match_video.group(1) if match_video else match_image.group(1)
                 task_type = 'video' if match_video else 'image'
-                
+
                 # 在数据库中查找对应的标注任务
                 tasks = db.query(AnnotationTask).filter(
                     AnnotationTask.project_name == project_name
                 ).all()
-                
+
                 for ann_task in tasks:
                     original_task_name = os.path.splitext(os.path.basename(ann_task.task_path))[0]
                     original_task_name_safe = re.sub(r'[^a-zA-Z0-9_.-]', '_', original_task_name)
-                    
+
                     if original_task_name_safe == task_name_safe:
                         # 找到对应的标注任务，更新统计信息
                         update_task_stats(db, ann_task.task_path, task_type, project_name)
@@ -632,12 +633,13 @@ def delete_annotation(request: DeleteAnnotationRequest, db: Session = Depends(ge
         except Exception as e:
             # 统计更新失败不影响删除操作
             logger.warning(f"Failed to update stats after deletion: {e}")
-        
+
         logger.info(f"Deleted annotation: {image_filename}, files: {deleted}")
         return {"message": f"标注删除成功: {', '.join(deleted)}"}
-    
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to delete annotation: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"删除标注失败: {str(e)}")
+

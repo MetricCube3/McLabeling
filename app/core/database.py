@@ -4,7 +4,7 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from models import Base
+from app.models.models import Base
 
 # 数据库配置
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./mclabeling.db')
@@ -47,7 +47,7 @@ def get_db():
 
 def create_default_admin(db: Session):
     """创建默认管理员账户"""
-    from models import User
+    from app.models.models import User
     
     admin = db.query(User).filter(User.username == 'admin').first()
     if not admin:
