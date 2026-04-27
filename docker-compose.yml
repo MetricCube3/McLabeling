@@ -36,10 +36,10 @@ services:
     # 数据卷挂载
     volumes:
       # 数据持久化
-      - ./data:/app/data
+      - ./data:/workspace/data
       
       # 配置文件
-      - ./.env:/app/.env:ro
+      - ./.env:/workspace/.env:ro
 
       # 时间同步
       - /etc/localtime:/etc/localtime:ro

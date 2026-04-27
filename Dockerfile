@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     TZ=Asia/Shanghai
 
-WORKDIR /app
+WORKDIR /workspace
 
 COPY . .
 
