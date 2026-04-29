@@ -7,6 +7,8 @@
 import { appState } from '../../core/state.js';
 import { showToast } from '../../utils/toast.js';
 import { addNewObject } from './annotation-state.js';
+import { getCurrentDrawMode, DRAW_MODE } from './draw-mode.js';
+import { cancelDrawing, isDrawing } from './manual-draw.js';
 
 // 防止重复初始化的标志
 let isInitialized = false;
@@ -130,9 +132,19 @@ function handleKeyDown(e) {
         return;
     }
     
-    // 返回任务列表：ESC 键
+    // 返回任务列表或取消绘制：ESC 键
     if (SHORTCUTS.BACK.includes(e.key)) {
         e.preventDefault();
+        
+        // 如果正在绘制多边形，优先取消绘制
+        const mode = getCurrentDrawMode();
+        if ((mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.RECTANGLE) && isDrawing()) {
+            cancelDrawing();
+            showToast('已取消绘制', 'info');
+            return;
+        }
+        
+        // 否则返回任务列表
         if (backToListBtn && annotationUI && !annotationUI.classList.contains('hidden')) {
             backToListBtn.click();
         }
@@ -161,7 +173,10 @@ export function getShortcutsHelp() {
         { keys: 'S 或 Ctrl+S', description: '保存标注' },
         { keys: 'R 或 Ctrl+R', description: '清空当前帧' },
         { keys: 'X', description: '添加新标注' },
-        { keys: 'ESC', description: '返回任务列表' }
+        { keys: 'M', description: 'SAM模式' },
+        { keys: 'B', description: '矩形框模式' },
+        { keys: 'P', description: '多边形模式' },
+        { keys: 'ESC', description: '取消绘制 / 返回列表' }
     ];
 }
 

@@ -105,6 +105,7 @@ export function addNewObject() {
         maskData: null,
         boxData: null,
         isVisible: true,
+        annotationType: 'sam', // 标注类型：sam, rectangle, polygon
     };
     
     annotationState.objects.push(newObject);

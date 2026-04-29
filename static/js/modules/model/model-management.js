@@ -7,6 +7,7 @@
 import { appState } from '../../core/state.js';
 import { eventBus, EVENTS } from '../../core/event-bus.js';
 import { showToast } from '../../utils/toast.js';
+import { showConfirm } from '../../utils/modal.js';
 
 // DOM元素
 let uploadModelBtn = null;
@@ -298,7 +299,7 @@ async function loadUploadedModels() {
             modelsList.innerHTML = modelsData.models.map(model => {
                 const isActive = model.name === activeModel;
                 return `
-                    <div class="model-item ${isActive ? 'active-model-item' : ''}">
+                    <div class="model-item ${isActive ? 'active-model-item' : ''}" data-model-info='${JSON.stringify(model).replace(/'/g, "&apos;")}'>
                         <div class="model-info">
                             <span class="model-name">📦 ${model.name} ${isActive ? '<span class="badge-active">已应用</span>' : ''}</span>
                             <span class="model-size">${formatFileSize(model.size)}</span>
@@ -313,7 +314,7 @@ async function loadUploadedModels() {
             }).join('');
             
             // 绑定模型操作事件
-            bindModelActions(modelsList);
+            bindModelActions(modelsList, modelsData.models);
             
             eventBus.emit('model:list-loaded', { models: modelsData.models, activeModel });
         }
@@ -325,7 +326,7 @@ async function loadUploadedModels() {
 /**
  * 绑定模型操作事件
  */
-function bindModelActions(container) {
+function bindModelActions(container, models) {
     container.querySelectorAll('[data-action="set-active"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const modelName = btn.getAttribute('data-model-name');
@@ -336,7 +337,9 @@ function bindModelActions(container) {
     container.querySelectorAll('[data-action="delete"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const modelName = btn.getAttribute('data-model-name');
-            deleteModel(modelName);
+            const modelItem = btn.closest('.model-item');
+            const modelInfo = JSON.parse(modelItem.getAttribute('data-model-info'));
+            deleteModel(modelInfo);
         });
     });
 }
@@ -371,8 +374,21 @@ export async function setActiveModel(modelName) {
 /**
  * 删除模型
  */
-export async function deleteModel(modelName) {
-    if (!confirm(`确定要删除模型 "${modelName}" 吗？`)) {
+export async function deleteModel(model) {
+    const modelName = typeof model === 'string' ? model : model.name;
+    const details = typeof model === 'object' ? [
+        `模型名称：${model.name}`,
+        `文件大小：${formatFileSize(model.size)}`,
+        `修改时间：${formatDateTime(model.modified_time)}`
+    ] : [`模型名称：${modelName}`];
+    
+    const confirmed = await showConfirm(
+        `确定要删除模型 "${modelName}" 吗？`,
+        details,
+        '删除模型'
+    );
+    
+    if (!confirmed) {
         return;
     }
     

@@ -577,12 +577,34 @@
                                 <div class="shortcut-item"><kbd>S</kbd> 保存</div>
                                 <div class="shortcut-item"><kbd>R</kbd> 清空</div>
                                 <div class="shortcut-item"><kbd>X</kbd> 添加标注</div>
-                                <div class="shortcut-item"><kbd>ESC</kbd> 返回</div>
+                                <div class="shortcut-item"><kbd>M</kbd>/<kbd>B</kbd>/<kbd>P</kbd> 切换标注模式</div>
+                                <div class="shortcut-item"><kbd>ESC</kbd> 取消/返回</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="main-content">
+                        <!-- 绘制模式切换 - 侧边图标 -->
+                        <div class="draw-mode-selector">
+                            <button id="sam-mode-btn" class="mode-toggle-btn active" title="SAM辅助标注 (快捷键: M)&#10;左键添加正点，右键添加负点">
+                                <span class="btn-icon icon-sam">✨</span>
+                            </button>
+                            <button id="rect-mode-btn" class="mode-toggle-btn" title="矩形框标注 (快捷键: B)&#10;按住拖拽绘制矩形框">
+                                <span class="btn-icon icon-rect">▭</span>
+                            </button>
+                            <button id="polygon-mode-btn" class="mode-toggle-btn" title="多边形标注 (快捷键: P)&#10;点击添加顶点，点击首点或双击完成">
+                                <span class="btn-icon icon-polygon">⬠</span>
+                            </button>
+                            
+                            <!-- 功能分隔线 -->
+                            <div class="mode-separator"></div>
+                            
+                            <!-- 自动标注按钮 -->
+                            <button id="auto-annotate-btn" class="mode-toggle-btn" title="自动标注&#10;使用AI模型自动标注当前帧">
+                                <span class="btn-icon icon-auto">🪄</span>
+                            </button>
+                        </div>
+                        
                         <div class="annotation-area">
                             <div id="image-container">
                                 <img id="display-image" src="" alt="Video Frame">
@@ -624,10 +646,6 @@
                                     <button id="save-success-btn" class="action-btn save">
                                         <span class="btn-icon">💾</span>
                                         保存
-                                    </button>
-                                    <button id="auto-annotate-btn" class="action-btn auto-annotate">
-                                        <span class="btn-icon">🤖</span>
-                                        自动标注
                                     </button>
                                     <button id="reset-btn" class="action-btn reset">
                                         <span class="btn-icon">🔄</span>
@@ -725,6 +743,38 @@
                     </button>
                 </div>
                 <div id="training-results-grid" class="training-results-grid"></div>
+            </div>
+        </div>
+
+        <!-- 自动标注确认模态框 -->
+        <div id="auto-annotate-confirm-modal" class="custom-confirm-modal hidden">
+            <div class="custom-confirm-dialog auto-annotate-dialog">
+                <div class="custom-confirm-header">
+                    <div class="custom-confirm-icon">🪄</div>
+                    <h3 class="custom-confirm-title">自动标注模式</h3>
+                </div>
+                
+                <div class="custom-confirm-content">
+                    <div class="custom-confirm-message">请选择自动标注的范围：</div>
+                    
+                    <div class="custom-confirm-details auto-annotate-options">
+                        <ul>
+                            <li><strong>批量标注</strong> - 自动标注该任务的所有图片</li>
+                            <li><strong>仅当前图片</strong> - 只标注当前显示的图片</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="auto-annotate-info">
+                        <span class="info-icon">�</span>
+                        <span>AI模型将自动检测并标注图像中的目标对象</span>
+                    </div>
+                </div>
+                
+                <div class="custom-confirm-actions">
+                    <button id="auto-annotate-cancel-btn" class="custom-confirm-btn cancel" type="button">取消</button>
+                    <button id="auto-annotate-single-btn" class="custom-confirm-btn single" type="button">仅当前图片</button>
+                    <button id="auto-annotate-batch-btn" class="custom-confirm-btn confirm batch" type="button">批量标注</button>
+                </div>
             </div>
         </div>
 

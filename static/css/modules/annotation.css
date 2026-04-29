@@ -907,7 +907,9 @@
     padding: 20px;
     margin: 0;
     display: flex;
-    gap: 20px;
+    gap: 15px;
+    overflow: hidden;
+    min-height: 0;
 }
 
 .annotation-area {
@@ -958,7 +960,10 @@
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 200px);
+    /* 高度与图片标注区域对齐，确保底部位置一致 */
+    height: calc(100vh - 280px);
+    max-height: calc(100vh - 280px);
+    min-height: 500px;
 }
 
 .sidebar-header {
@@ -1001,7 +1006,9 @@
 .object-list-container {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 10px;
+    min-height: 0;
 }
 
 /* 标注对象列表项 */
@@ -1024,6 +1031,8 @@
     overflow: hidden;
     width: 100%;
     box-sizing: border-box;
+    min-height: 48px;
+    flex-shrink: 0;
 }
 
 .object-item:hover {
@@ -1193,7 +1202,7 @@
 .controls-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 15px;
 }
@@ -1531,4 +1540,89 @@
 
 .reassign-modal .close-modal-btn:active {
     transform: rotate(90deg) scale(1);
+}
+
+/* ========== 绘制模式选择器样式 ========== */
+.draw-mode-selector {
+    width: 60px;
+    flex-shrink: 0;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.mode-toggle-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.mode-toggle-btn .btn-icon {
+    font-size: 26px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* 图标精确居中微调 */
+.mode-toggle-btn .icon-sam {
+    /* 魔法棒图标微调 */
+    transform: translate(0, -1px);
+}
+
+.mode-toggle-btn .icon-rect {
+    /* 长方形图标微调 */
+    transform: translate(0, -1px);
+}
+
+.mode-toggle-btn .icon-polygon {
+    /* 五边形图标微调 */
+    transform: translate(0, -1px);
+}
+
+.mode-toggle-btn .icon-auto {
+    /* 自动标注魔法棒图标微调 */
+    transform: translate(0, -1px);
+}
+
+/* 功能分隔线 */
+.mode-separator {
+    width: 30px;
+    height: 1px;
+    background: var(--border-color);
+    margin: 5px 0;
+}
+
+.mode-toggle-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-color);
+    transform: translateX(-2px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.mode-toggle-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+.mode-toggle-btn.active .btn-icon {
+    transform: scale(1.15);
 }

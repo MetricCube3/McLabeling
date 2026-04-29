@@ -14,6 +14,8 @@ import { init as initAnnotationSave } from './annotation-save.js';
 import { init as initAnnotationState, addNewObject, initAnnotationState as clearCurrentFrame } from './annotation-state.js';
 import { init as initKeyboardShortcuts } from './keyboard-shortcuts.js';
 import { init as initAutoAnnotate } from './auto-annotate.js';
+import { init as initDrawMode } from './draw-mode.js';
+import { init as initManualDraw } from './manual-draw.js';
 import { redrawAll } from './annotation-canvas.js';
 import { renderSidebar } from './annotation-sidebar.js';
 
@@ -43,6 +45,8 @@ export function init() {
     
     // 初始化所有标注子模块（重要：按顺序初始化）
     initAnnotationState();      // 状态管理
+    initDrawMode();             // 绘制模式管理
+    initManualDraw();           // 手动绘制功能
     initAnnotationCanvas();      // Canvas初始化
     initAnnotationFrame();       // 帧导航和DOM元素
     initAnnotationSidebar();     // 侧边栏

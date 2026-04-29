@@ -725,7 +725,7 @@ function createLabelRow(label, isAdmin) {
         saveBtn.addEventListener('click', () => {
             const newName = nameEdit.value.trim();
             if (newName && newName !== label.name) {
-                saveLabelEditInline(label.id, newName, row, nameDisplay, nameCell, nameEdit, editActions, editBtn);
+                saveLabelEditInline(label, newName, row, nameDisplay, nameCell, nameEdit, editActions, editBtn);
             } else {
                 exitEditMode(nameCell, nameDisplay, nameEdit, editActions, editBtn);
             }
@@ -835,7 +835,7 @@ function exitEditMode(cell, display, edit, actions, editBtn) {
 /**
  * 列表内保存标签编辑
  */
-async function saveLabelEditInline(labelId, newName, row, display, cell, edit, actions, editBtn) {
+async function saveLabelEditInline(label, newName, row, display, cell, edit, actions, editBtn) {
     const currentUser = appState.getState('currentUser');
     const currentProject = appState.getState('currentProject');
     
@@ -846,9 +846,12 @@ async function saveLabelEditInline(labelId, newName, row, display, cell, edit, a
             body: JSON.stringify({
                 user: currentUser,
                 project: currentProject,
-                action: 'update',
-                label_id: labelId,
-                new_name: newName
+                action: 'edit',
+                label: {
+                    id: label.id,
+                    name: newName,
+                    color: label.color
+                }
             })
         });
         
@@ -869,7 +872,7 @@ async function saveLabelEditInline(labelId, newName, row, display, cell, edit, a
                 appState.setState('labels', labels);
             }
             
-            eventBus.emit(EVENTS.LABEL_UPDATED, { id: labelId, name: newName, project: currentProject });
+            eventBus.emit(EVENTS.LABEL_UPDATED, { id: label.id, name: newName, project: currentProject });
         } else {
             throw new Error(data.error || '修改标签失败');
         }

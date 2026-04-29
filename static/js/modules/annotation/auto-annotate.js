@@ -16,6 +16,10 @@ import { saveAnnotationsSilent } from './annotation-save.js';
 // DOM元素
 let autoAnnotateBtn = null;
 let displayImage = null;
+let confirmModal = null;
+let batchBtn = null;
+let singleBtn = null;
+let cancelBtn = null;
 
 // 默认颜色列表
 const COLORS = ['#FF3838', '#FF9D38', '#3877FF', '#38FFFF', '#8B38FF', '#FF38F5'];
@@ -26,11 +30,55 @@ const COLORS = ['#FF3838', '#FF9D38', '#3877FF', '#38FFFF', '#8B38FF', '#FF38F5'
 export function init() {
     autoAnnotateBtn = document.getElementById('auto-annotate-btn');
     displayImage = document.getElementById('display-image');
+    confirmModal = document.getElementById('auto-annotate-confirm-modal');
+    batchBtn = document.getElementById('auto-annotate-batch-btn');
+    singleBtn = document.getElementById('auto-annotate-single-btn');
+    cancelBtn = document.getElementById('auto-annotate-cancel-btn');
     
     // 设置自动标注按钮事件
     if (autoAnnotateBtn) {
         autoAnnotateBtn.addEventListener('click', handleAutoAnnotate);
     }
+    
+    // 设置模态框按钮事件
+    if (batchBtn) {
+        batchBtn.addEventListener('click', () => {
+            hideConfirmModal();
+            handleBatchAutoAnnotate();
+        });
+    }
+    
+    if (singleBtn) {
+        singleBtn.addEventListener('click', () => {
+            hideConfirmModal();
+            handleSingleAutoAnnotate();
+        });
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            hideConfirmModal();
+            // 取消时不显示任何提示
+        });
+    }
+    
+    // 点击模态框背景关闭
+    if (confirmModal) {
+        confirmModal.addEventListener('click', (e) => {
+            if (e.target === confirmModal) {
+                hideConfirmModal();
+                // 取消时不显示任何提示
+            }
+        });
+    }
+    
+    // ESC键关闭
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && confirmModal && !confirmModal.classList.contains('hidden')) {
+            hideConfirmModal();
+            // 取消时不显示任何提示
+        }
+    });
 }
 
 /**
@@ -45,17 +93,8 @@ export async function handleAutoAnnotate() {
         return;
     }
     
-    // 询问用户是否批量标注
-    const doBatch = await showConfirmDialog(
-        '自动标注模式',
-        '是否批量标注该任务的所有图片？\n\n点击"确定"批量标注所有图片\n点击"取消"仅标注当前图片'
-    );
-    
-    if (doBatch) {
-        await handleBatchAutoAnnotate();
-    } else {
-        await handleSingleAutoAnnotate();
-    }
+    // 显示模态框让用户选择
+    showConfirmModal();
 }
 
 /**
@@ -359,13 +398,25 @@ function waitForImageLoad() {
 }
 
 /**
- * 确认对话框
+ * 显示确认模态框
  */
-function showConfirmDialog(title, message) {
-    return new Promise((resolve) => {
-        const result = confirm(message);
-        resolve(result);
-    });
+function showConfirmModal() {
+    if (confirmModal) {
+        confirmModal.classList.remove('hidden');
+        // 自动聚焦到取消按钮（更安全的默认选项）
+        if (cancelBtn) {
+            setTimeout(() => cancelBtn.focus(), 100);
+        }
+    }
+}
+
+/**
+ * 隐藏确认模态框
+ */
+function hideConfirmModal() {
+    if (confirmModal) {
+        confirmModal.classList.add('hidden');
+    }
 }
 
 export default {

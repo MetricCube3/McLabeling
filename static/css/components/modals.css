@@ -271,6 +271,75 @@
     }
 }
 
+/* 自动标注确认对话框特定样式 */
+.auto-annotate-dialog {
+    max-width: 520px;
+}
+
+.auto-annotate-options ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.auto-annotate-options li {
+    position: relative;
+    padding-left: 20px;
+}
+
+.auto-annotate-options li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.auto-annotate-options li strong {
+    color: var(--primary-color);
+}
+
+.auto-annotate-info {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #bbdefb;
+    margin-top: 15px;
+    color: #1565c0;
+    font-size: 14px;
+}
+
+.auto-annotate-info .info-icon {
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+/* 自动标注按钮特定样式 */
+.custom-confirm-btn.single {
+    background: linear-gradient(135deg, #17a2b8 0%, #1abc9c 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.custom-confirm-btn.single:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(23, 162, 184, 0.5);
+    background: linear-gradient(135deg, #1abc9c 0%, #48cfad 100%);
+}
+
+.custom-confirm-btn.batch {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.custom-confirm-btn.batch:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+    background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+}
+
 .hidden {
     display: none !important;
 }

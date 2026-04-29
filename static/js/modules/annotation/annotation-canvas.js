@@ -7,6 +7,8 @@
 import { appState } from '../../core/state.js';
 import { eventBus, EVENTS } from '../../core/event-bus.js';
 import { getAnnotationState, setActiveObject, toggleObjectVisibility, deleteObject, updateObjectClassId } from './annotation-state.js';
+import { getCurrentDrawMode, DRAW_MODE } from './draw-mode.js';
+import * as manualDraw from './manual-draw.js';
 
 // Canvas和图像相关的全局变量
 let canvas = null;
@@ -15,6 +17,7 @@ let displayImage = null;
 let imageDimensions = { width: 0, height: 0, naturalWidth: 0, naturalHeight: 0, ratio: 1 };
 let hoverState = { pointIndex: -1, objectIndex: -1 };
 let highlightedObjectIndex = -1; // 来自列表悬停的高亮目标
+let currentMousePos = null; // 当前鼠标位置（用于绘制十字准星）
 
 /**
  * 初始化Canvas模块
@@ -33,6 +36,13 @@ export function init() {
     eventBus.on(EVENTS.ANNOTATION_STATE_CHANGED, handleStateChanged);
     eventBus.on(EVENTS.ANNOTATION_ACTIVE_OBJECT_CHANGED, handleActiveObjectChanged);
     eventBus.on(EVENTS.ANNOTATION_LIST_HOVERED, handleListHovered);
+    
+    // 订阅手动绘制事件
+    eventBus.on('manual-draw:rectangle-preview', handleRectanglePreview);
+    eventBus.on('manual-draw:polygon-updated', handlePolygonUpdated);
+    eventBus.on('manual-draw:polygon-preview', handlePolygonPreview);
+    eventBus.on('manual-draw:completed', redrawAll);
+    eventBus.on('manual-draw:cancelled', redrawAll);
 }
 
 /**
@@ -41,11 +51,11 @@ export function init() {
 function setupCanvasEvents() {
     if (!canvas) return;
     
-    canvas.addEventListener('click', (e) => handleCanvasClick(e, 1));
-    canvas.addEventListener('contextmenu', (e) => { 
-        e.preventDefault(); 
-        handleCanvasClick(e, 0); 
-    });
+    canvas.addEventListener('mousedown', handleCanvasMouseDown);
+    canvas.addEventListener('mouseup', handleCanvasMouseUp);
+    canvas.addEventListener('click', handleCanvasClickEvent);
+    canvas.addEventListener('dblclick', handleCanvasDblClick);
+    canvas.addEventListener('contextmenu', handleCanvasContextMenu);
     canvas.addEventListener('mousemove', handleCanvasMouseMove);
 }
 
@@ -54,6 +64,7 @@ function setupCanvasEvents() {
  */
 export function setImageDimensions(dims) {
     imageDimensions = dims;
+    manualDraw.setImageDimensions(dims);
 }
 
 /**
@@ -66,6 +77,7 @@ export function redrawAll() {
     drawAllMasks();
     drawAllPoints();
     drawObjectHighlights();
+    drawManualDrawingPreview();
 }
 
 /**
@@ -85,25 +97,45 @@ function drawAllMasks() {
                                  index === hoverState.objectIndex ||
                                  index === highlightedObjectIndex;
             
-            // 高亮对象使用更高不透明度，普通对象降低不透明度避免干扰
-            ctx.fillStyle = hexToRgba(obj.color, isHighlighted ? 0.6 : 0.4);
-            obj.maskData.forEach(polygon => {
-                if (polygon.length === 0) return;
-                ctx.beginPath();
-                
-                const startPoint = scaleCoordsToCanvas(polygon[0]);
-                if (!startPoint) return;
-                
-                ctx.moveTo(startPoint.x, startPoint.y);
-                for (let i = 1; i < polygon.length; i++) {
-                    const point = scaleCoordsToCanvas(polygon[i]);
-                    if (point) {
-                        ctx.lineTo(point.x, point.y);
-                    }
+            // 判断是否为矩形框标注（没有annotationType字段则默认为SAM，显示背景色）
+            const isRectangle = obj.annotationType === 'rectangle';
+            
+            // 矩形框标注：仅在选定时显示背景色；其他标注（SAM、多边形）：总是显示背景色
+            const shouldFill = !isRectangle || isHighlighted;
+            
+            if (shouldFill) {
+                // 根据标注类型设置不同的透明度
+                let fillOpacity;
+                if (isRectangle && isHighlighted) {
+                    // 矩形框选定状态：使用更浅的背景色（0.25）
+                    fillOpacity = 0.25;
+                } else if (isHighlighted) {
+                    // SAM/多边形选定状态：0.6
+                    fillOpacity = 0.6;
+                } else {
+                    // SAM/多边形未选定状态：0.4
+                    fillOpacity = 0.4;
                 }
-                ctx.closePath();
-                ctx.fill();
-            });
+                
+                ctx.fillStyle = hexToRgba(obj.color, fillOpacity);
+                obj.maskData.forEach(polygon => {
+                    if (polygon.length === 0) return;
+                    ctx.beginPath();
+                    
+                    const startPoint = scaleCoordsToCanvas(polygon[0]);
+                    if (!startPoint) return;
+                    
+                    ctx.moveTo(startPoint.x, startPoint.y);
+                    for (let i = 1; i < polygon.length; i++) {
+                        const point = scaleCoordsToCanvas(polygon[i]);
+                        if (point) {
+                            ctx.lineTo(point.x, point.y);
+                        }
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                });
+            }
             
             // 绘制多边形轮廓：选定状态画点，非选定状态画线
             if (isHighlighted) {
@@ -270,7 +302,84 @@ function drawObjectHighlights() {
 }
 
 /**
- * 处理Canvas点击事件
+ * 处理鼠标按下事件
+ */
+function handleCanvasMouseDown(e) {
+    // 只响应左键（button === 0）
+    if (e.button !== 0) return;
+    
+    const mode = getCurrentDrawMode();
+    const canvasCoords = getCanvasMousePos(e);
+    const imageCoords = scaleCoordsToImage(canvasCoords);
+    
+    if (!imageCoords) return;
+    
+    // 根据绘制模式分发处理
+    if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON) {
+        const annotationState = getAnnotationState();
+        if (!annotationState.objects || annotationState.activeObjectIndex === -1) return;
+        
+        manualDraw.handleMouseDown(e, canvasCoords, imageCoords);
+    }
+}
+
+/**
+ * 处理鼠标释放事件
+ */
+function handleCanvasMouseUp(e) {
+    const mode = getCurrentDrawMode();
+    const canvasCoords = getCanvasMousePos(e);
+    const imageCoords = scaleCoordsToImage(canvasCoords);
+    
+    if (mode === DRAW_MODE.RECTANGLE) {
+        manualDraw.handleMouseUp(e, canvasCoords, imageCoords);
+    }
+}
+
+/**
+ * 处理点击事件
+ */
+function handleCanvasClickEvent(e) {
+    const mode = getCurrentDrawMode();
+    
+    // SAM模式才使用点击事件
+    if (mode === DRAW_MODE.SAM) {
+        handleCanvasClick(e, 1);
+    }
+}
+
+/**
+ * 处理双击事件
+ */
+function handleCanvasDblClick(e) {
+    const mode = getCurrentDrawMode();
+    
+    if (mode === DRAW_MODE.POLYGON) {
+        e.preventDefault();
+        manualDraw.handleDoubleClick(e);
+    }
+}
+
+/**
+ * 处理右键菜单事件
+ */
+function handleCanvasContextMenu(e) {
+    e.preventDefault();
+    
+    const mode = getCurrentDrawMode();
+    const canvasCoords = getCanvasMousePos(e);
+    const imageCoords = scaleCoordsToImage(canvasCoords);
+    
+    if (mode === DRAW_MODE.POLYGON) {
+        const handled = manualDraw.handleRightClick(e, canvasCoords, imageCoords);
+        if (handled) return;
+    } else if (mode === DRAW_MODE.SAM) {
+        handleCanvasClick(e, 0);
+    }
+}
+
+/**
+ * 处理Canvas点击事件（SAM模式）
  * 从 app.js:3316 迁移
  */
 export async function handleCanvasClick(e, label) {
@@ -308,16 +417,45 @@ export async function handleCanvasClick(e, label) {
  * 从 app.js:3344 迁移
  */
 export function handleCanvasMouseMove(e) {
+    const mode = getCurrentDrawMode();
+    const canvasCoords = getCanvasMousePos(e);
+    const imageCoords = scaleCoordsToImage(canvasCoords);
+    
+    // 手动绘制模式下的处理
+    if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON) {
+        // 保存鼠标位置用于绘制十字准星
+        const oldMousePos = currentMousePos;
+        currentMousePos = canvasCoords;
+        
+        manualDraw.handleMouseMove(e, canvasCoords, imageCoords);
+        
+        // 如果正在绘制，只更新预览，不进行悬停检测
+        if (manualDraw.isDrawing()) {
+            return;
+        }
+        
+        // 鼠标移动时触发重绘（实现十字准星实时跟随）
+        if (!oldMousePos || oldMousePos.x !== currentMousePos.x || oldMousePos.y !== currentMousePos.y) {
+            redrawAll();
+        }
+    } else {
+        // 非手动绘制模式，清除鼠标位置
+        if (currentMousePos !== null) {
+            currentMousePos = null;
+            redrawAll(); // 清除十字准星
+        }
+    }
+    
+    // SAM模式或未绘制时的常规悬停处理
     const annotationState = getAnnotationState();
     if (!annotationState.objects) return;
     
-    const canvasCoords = getCanvasMousePos(e);
     let needsRedraw = false;
     const oldPointHover = hoverState.pointIndex;
     hoverState.pointIndex = -1;
     
     const activeObject = annotationState.objects[annotationState.activeObjectIndex];
-    if (activeObject) {
+    if (activeObject && mode === DRAW_MODE.SAM) {
         const foundPoint = activeObject.points.findIndex(p => {
             const canvasP = scaleCoordsToCanvas(p);
             return Math.hypot(canvasCoords.x - canvasP.x, canvasCoords.y - canvasP.y) < 8;
@@ -490,6 +628,159 @@ function handleListHovered(index) {
     if (oldHighlight !== highlightedObjectIndex) {
         redrawAll();
     }
+}
+
+/**
+ * 绘制手动绘制预览
+ */
+function drawManualDrawingPreview() {
+    const drawingState = manualDraw.getDrawingState();
+    const annotationState = getAnnotationState();
+    const activeObject = annotationState.objects?.[annotationState.activeObjectIndex];
+    const activeColor = activeObject ? activeObject.color : '#3498db';
+    
+    // 绘制矩形框预览
+    if (drawingState.rectangle.isDrawing && drawingState.rectangle.startPoint && drawingState.rectangle.currentPoint) {
+        const start = scaleCoordsToCanvas(drawingState.rectangle.startPoint);
+        const current = scaleCoordsToCanvas(drawingState.rectangle.currentPoint);
+        
+        const width = current.x - start.x;
+        const height = current.y - start.y;
+        
+        ctx.save();
+        ctx.strokeStyle = activeColor;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(start.x, start.y, width, height);
+        
+        // 使用标签颜色的半透明背景
+        ctx.fillStyle = hexToRgba(activeColor, 0.1);
+        ctx.fillRect(start.x, start.y, width, height);
+        ctx.restore();
+    }
+    
+    // 绘制多边形预览
+    if (drawingState.polygon.isDrawing && drawingState.polygon.points.length > 0) {
+        const points = drawingState.polygon.points;
+        
+        // 获取活动对象的颜色
+        const annotationState = getAnnotationState();
+        const activeObject = annotationState.objects[annotationState.activeObjectIndex];
+        const activeColor = activeObject ? activeObject.color : '#3498db';
+        
+        ctx.save();
+        
+        // 绘制已有的线段
+        if (points.length > 1) {
+            ctx.strokeStyle = activeColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const firstPoint = scaleCoordsToCanvas(points[0]);
+            ctx.moveTo(firstPoint.x, firstPoint.y);
+            
+            for (let i = 1; i < points.length; i++) {
+                const point = scaleCoordsToCanvas(points[i]);
+                ctx.lineTo(point.x, point.y);
+            }
+            
+            ctx.stroke();
+        }
+        
+        // 绘制顶点
+        points.forEach((point, index) => {
+            const canvasPoint = scaleCoordsToCanvas(point);
+            
+            if (index === 0) {
+                // 第一个点特殊处理：更大，带外圈提示可点击完成
+                if (points.length >= 3) {
+                    // 绘制外圈提示（点击此处完成绘制）
+                    ctx.beginPath();
+                    ctx.arc(canvasPoint.x, canvasPoint.y, 10, 0, 2 * Math.PI);
+                    ctx.strokeStyle = activeColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([3, 3]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                // 绘制第一个点
+                ctx.beginPath();
+                ctx.arc(canvasPoint.x, canvasPoint.y, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = activeColor;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            } else {
+                // 其他顶点
+                ctx.beginPath();
+                ctx.arc(canvasPoint.x, canvasPoint.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = activeColor;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        });
+        
+        ctx.restore();
+    }
+    
+    // 绘制虚线十字准星（矩形和多边形模式下）
+    const mode = getCurrentDrawMode();
+    if ((mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON) && currentMousePos && canvas) {
+        // 获取图像显示区域
+        const displayRect = getImageDisplayRect();
+        
+        // 检查鼠标是否在图像范围内
+        if (currentMousePos.x >= displayRect.x && 
+            currentMousePos.x <= displayRect.x + displayRect.width &&
+            currentMousePos.y >= displayRect.y && 
+            currentMousePos.y <= displayRect.y + displayRect.height) {
+            
+            ctx.save();
+            ctx.strokeStyle = 'white';  // 白色
+            ctx.lineWidth = 2;  // 加粗
+            ctx.setLineDash([5, 5]);
+            ctx.globalAlpha = 0.8;  // 提高不透明度
+            
+            // 绘制垂直线（限制在图像范围内）
+            ctx.beginPath();
+            ctx.moveTo(currentMousePos.x, displayRect.y);
+            ctx.lineTo(currentMousePos.x, displayRect.y + displayRect.height);
+            ctx.stroke();
+            
+            // 绘制水平线（限制在图像范围内）
+            ctx.beginPath();
+            ctx.moveTo(displayRect.x, currentMousePos.y);
+            ctx.lineTo(displayRect.x + displayRect.width, currentMousePos.y);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+    }
+}
+
+/**
+ * 处理矩形框预览事件
+ */
+function handleRectanglePreview() {
+    redrawAll();
+}
+
+/**
+ * 处理多边形更新事件
+ */
+function handlePolygonUpdated() {
+    redrawAll();
+}
+
+/**
+ * 处理多边形预览事件（鼠标移动时）
+ */
+function handlePolygonPreview() {
+    redrawAll();
 }
 
 export default {
