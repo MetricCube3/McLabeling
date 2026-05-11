@@ -1581,6 +1581,11 @@
     height: 100%;
 }
 
+.mode-toggle-btn .btn-icon svg {
+    display: block;
+    margin: auto;
+}
+
 /* 图标精确居中微调 */
 .mode-toggle-btn .icon-sam {
     /* 魔法棒图标微调 */
@@ -1588,13 +1593,27 @@
 }
 
 .mode-toggle-btn .icon-rect {
-    /* 长方形图标微调 */
-    transform: translate(0, -1px);
+    /* 矩形框图标居中微调 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(1px);
 }
 
 .mode-toggle-btn .icon-polygon {
-    /* 五边形图标微调 */
-    transform: translate(0, -1px);
+    /* 多边形图标居中微调 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(1px);
+}
+
+.mode-toggle-btn .icon-obb {
+    /* OBB旋转框图标居中微调 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateX(1px);
 }
 
 .mode-toggle-btn .icon-auto {
@@ -1625,4 +1644,29 @@
 
 .mode-toggle-btn.active .btn-icon {
     transform: scale(1.15);
+}
+
+/* 激活状态下保持SAM图标的微调 */
+.mode-toggle-btn.active .icon-sam {
+    transform: translate(0, -1px) scale(1.15);
+}
+
+/* 激活状态下保持矩形框图标的微调 */
+.mode-toggle-btn.active .icon-rect {
+    transform: translateX(1px) scale(1.15);
+}
+
+/* 激活状态下保持多边形图标的微调 */
+.mode-toggle-btn.active .icon-polygon {
+    transform: translateX(1px) scale(1.15);
+}
+
+/* 激活状态下保持OBB图标的微调 */
+.mode-toggle-btn.active .icon-obb {
+    transform: translateX(1px) scale(1.15);
+}
+
+/* 激活状态下保持自动标注图标的微调 */
+.mode-toggle-btn.active .icon-auto {
+    transform: translate(0, -1px) scale(1.15);
 }

@@ -20,6 +20,15 @@ let polygonDrawing = {
     points: []
 };
 
+// OBB 三点法绘制状态
+// phase: 0=未开始, 1=已定A等待B, 2=已定AB等待C
+let obbDrawing = {
+    phase: 0,
+    pointA: null,
+    pointB: null,
+    previewCorners: null  // 实时预览的4个角点（图像坐标）
+};
+
 // Canvas相关变量
 let canvas = null;
 let imageDimensions = { width: 0, height: 0, naturalWidth: 0, naturalHeight: 0 };
@@ -63,6 +72,13 @@ function resetDrawingStates() {
         isDrawing: false,
         points: []
     };
+    
+    obbDrawing = {
+        phase: 0,
+        pointA: null,
+        pointB: null,
+        previewCorners: null
+    };
 }
 
 /**
@@ -73,6 +89,8 @@ export function handleMouseDown(e, canvasCoords, imageCoords) {
     
     if (mode === DRAW_MODE.RECTANGLE) {
         startRectangleDrawing(canvasCoords, imageCoords);
+    } else if (mode === DRAW_MODE.OBB) {
+        handleObbClick(canvasCoords, imageCoords);
     } else if (mode === DRAW_MODE.POLYGON) {
         // 检查是否点击了第一个点
         if (polygonDrawing.isDrawing && polygonDrawing.points.length >= 3) {
@@ -97,6 +115,8 @@ export function handleMouseMove(e, canvasCoords, imageCoords) {
     
     if (mode === DRAW_MODE.RECTANGLE && rectangleDrawing.isDrawing) {
         updateRectangleDrawing(canvasCoords, imageCoords);
+    } else if (mode === DRAW_MODE.OBB && obbDrawing.phase >= 1) {
+        updateObbPreview(imageCoords);
     } else if (mode === DRAW_MODE.POLYGON && polygonDrawing.isDrawing) {
         // 多边形绘制中，更新预览
         eventBus.emit('manual-draw:polygon-preview', imageCoords);
@@ -112,16 +132,21 @@ export function handleMouseUp(e, canvasCoords, imageCoords) {
     if (mode === DRAW_MODE.RECTANGLE && rectangleDrawing.isDrawing) {
         finishRectangleDrawing(canvasCoords, imageCoords);
     }
+    // OBB 使用 mousedown（点击），不使用 mouseup
 }
 
 /**
- * 处理双击事件（完成多边形）
+ * 处理双击事件（完成多边形 / 取消OBB）
  */
 export function handleDoubleClick(e) {
     const mode = getCurrentDrawMode();
     
     if (mode === DRAW_MODE.POLYGON && polygonDrawing.isDrawing) {
         finishPolygonDrawing();
+    } else if (mode === DRAW_MODE.OBB && obbDrawing.phase > 0) {
+        // 双击取消当前 OBB 绘制
+        resetDrawingStates();
+        eventBus.emit('manual-draw:cancelled');
     }
 }
 
@@ -307,7 +332,8 @@ export function cancelDrawing() {
 export function getDrawingState() {
     return {
         rectangle: rectangleDrawing,
-        polygon: polygonDrawing
+        polygon: polygonDrawing,
+        obb: obbDrawing
     };
 }
 
@@ -315,8 +341,149 @@ export function getDrawingState() {
  * 是否正在绘制
  */
 export function isDrawing() {
-    return rectangleDrawing.isDrawing || polygonDrawing.isDrawing;
+    return rectangleDrawing.isDrawing || polygonDrawing.isDrawing || obbDrawing.phase > 0;
 }
+
+// ─── OBB 三点法核心逻辑 ────────────────────────────────────────────────────
+
+/**
+ * 处理 OBB 模式下的点击（三点法状态机）
+ */
+function handleObbClick(canvasCoords, imageCoords) {
+    if (!imageCoords) return;
+    
+    const CANCEL_THRESHOLD = 10; // canvas 像素
+    
+    if (obbDrawing.phase === 0) {
+        // 点击第一个角点 A，开始绘制
+        obbDrawing.phase = 1;
+        obbDrawing.pointA = imageCoords;
+        obbDrawing.pointB = null;
+        obbDrawing.previewCorners = null;
+        eventBus.emit('manual-draw:obb-updated', obbDrawing);
+    } else if (obbDrawing.phase === 1) {
+        // 点击已有点 A → 取消绘制
+        const displayRect = getImageDisplayRect();
+        const cA = imageToCanvasCoords(obbDrawing.pointA, displayRect);
+        if (Math.hypot(canvasCoords.x - cA.x, canvasCoords.y - cA.y) < CANCEL_THRESHOLD) {
+            resetDrawingStates();
+            eventBus.emit('manual-draw:cancelled');
+            return;
+        }
+        // 点击第二个角点 B，确定第一条边
+        obbDrawing.phase = 2;
+        obbDrawing.pointB = imageCoords;
+        eventBus.emit('manual-draw:obb-updated', obbDrawing);
+    } else if (obbDrawing.phase === 2) {
+        const displayRect = getImageDisplayRect();
+        // 点击已有点 B → 撤销 B，回到 phase 1
+        const cB = imageToCanvasCoords(obbDrawing.pointB, displayRect);
+        if (Math.hypot(canvasCoords.x - cB.x, canvasCoords.y - cB.y) < CANCEL_THRESHOLD) {
+            obbDrawing.phase = 1;
+            obbDrawing.pointB = null;
+            obbDrawing.previewCorners = null;
+            eventBus.emit('manual-draw:obb-updated', obbDrawing);
+            return;
+        }
+        // 点击已有点 A → 完全取消
+        const cA = imageToCanvasCoords(obbDrawing.pointA, displayRect);
+        if (Math.hypot(canvasCoords.x - cA.x, canvasCoords.y - cA.y) < CANCEL_THRESHOLD) {
+            resetDrawingStates();
+            eventBus.emit('manual-draw:cancelled');
+            return;
+        }
+        // 点击第三点，完成 OBB
+        if (obbDrawing.previewCorners) {
+            finishObbDrawing();
+        }
+    }
+}
+
+/**
+ * 鼠标移动时更新 OBB 预览角点
+ */
+function updateObbPreview(imageCoords) {
+    if (!imageCoords) return;
+    
+    if (obbDrawing.phase === 1 && obbDrawing.pointA) {
+        // phase1：A已定，鼠标位置作为临时B，预览一条线段方向
+        obbDrawing.previewCorners = null; // 只显示线段，不显示矩形
+        eventBus.emit('manual-draw:obb-preview', { obbDrawing, mousePos: imageCoords });
+    } else if (obbDrawing.phase === 2 && obbDrawing.pointA && obbDrawing.pointB) {
+        // phase2：AB已定，根据鼠标位置计算完整4角点
+        obbDrawing.previewCorners = calcObbCorners(obbDrawing.pointA, obbDrawing.pointB, imageCoords);
+        eventBus.emit('manual-draw:obb-preview', { obbDrawing, mousePos: imageCoords });
+    }
+}
+
+/**
+ * 计算 OBB 四个角点
+ * A、B 定义第一条边，M 是鼠标位置，通过 M 到 AB 延长线的投影距离确定宽度
+ * 返回顺序：[A, B, C, D]，其中 C=B+perp*w, D=A+perp*w
+ */
+function calcObbCorners(A, B, M) {
+    const dx = B.x - A.x;
+    const dy = B.y - A.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return null;
+    
+    // 主轴单位向量
+    const ux = dx / len;
+    const uy = dy / len;
+    // 垂直单位向量（左手系，y轴向下）
+    const px = -uy;
+    const py = ux;
+    
+    // M 到 AB 起点的向量
+    const mx = M.x - A.x;
+    const my = M.y - A.y;
+    
+    // M 在垂直方向上的投影距离（有符号）
+    const w = mx * px + my * py;
+    
+    return [
+        { x: A.x,          y: A.y          },  // A
+        { x: B.x,          y: B.y          },  // B
+        { x: B.x + px * w, y: B.y + py * w },  // C
+        { x: A.x + px * w, y: A.y + py * w }   // D
+    ];
+}
+
+/**
+ * 完成 OBB 绘制，写入 activeObject
+ */
+function finishObbDrawing() {
+    const corners = obbDrawing.previewCorners;
+    if (!corners || corners.length !== 4) {
+        resetDrawingStates();
+        eventBus.emit('manual-draw:cancelled');
+        return;
+    }
+    
+    // maskData：4角点多边形（复用现有渲染逻辑）
+    const polygon = corners.map(p => [p.x, p.y]);
+    
+    // boxData：AABB（复用现有悬停检测）
+    const xs = polygon.map(p => p[0]);
+    const ys = polygon.map(p => p[1]);
+    const x1 = Math.min(...xs);
+    const y1 = Math.min(...ys);
+    const x2 = Math.max(...xs);
+    const y2 = Math.max(...ys);
+    
+    const activeObject = getActiveObject();
+    if (activeObject) {
+        updateActiveObjectMask([polygon], [x1, y1, x2, y2]);
+        activeObject.obbData = corners.map(p => [p.x, p.y]);
+        activeObject.points = [];
+        activeObject.annotationType = 'obb';
+    }
+    
+    resetDrawingStates();
+    eventBus.emit('manual-draw:completed');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * 查找是否点击了某个顶点附近

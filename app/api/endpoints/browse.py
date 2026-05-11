@@ -552,10 +552,21 @@ def check_annotation(task_path: str, index: int, image_width: int, image_height:
                 has_annotation = True
                 # 读取标注数据
                 try:
+                    # 预读 labels_obb/ 文件，用于识别 OBB 行
+                    obb_label_path = os.path.join(annotation_dir, 'labels_obb', annotation_filename)
+                    obb_line_set = set()
+                    if os.path.exists(obb_label_path):
+                        with open(obb_label_path, 'r', encoding='utf-8') as f_obb:
+                            for obb_line in f_obb:
+                                stripped = obb_line.strip()
+                                if stripped:
+                                    obb_line_set.add(stripped)
+
                     annotations = []
                     with open(label_path, 'r', encoding='utf-8') as f:
                         for line in f:
-                            parts = line.strip().split()
+                            raw = line.strip()
+                            parts = raw.split()
                             if len(parts) < 3:
                                 continue
                             class_id = int(parts[0])
@@ -565,10 +576,21 @@ def check_annotation(task_path: str, index: int, image_width: int, image_height:
                                 x = coords[i] * image_width
                                 y = coords[i + 1] * image_height
                                 pixel_coords.append([x, y])
-                            annotations.append({
+                            ann = {
                                 "classId": class_id,
                                 "maskData": [pixel_coords]
-                            })
+                            }
+                            # 如果该行也在 labels_obb/ 中，标识为 OBB 类型
+                            if raw in obb_line_set:
+                                ann['annotationType'] = 'obb'
+                                ann['obbData'] = pixel_coords
+                            elif len(pixel_coords) == 4:
+                                # 4个点且仅有2个不同x值+2个不同y值 → 轴对齐矩形框
+                                xs = set(round(p[0], 1) for p in pixel_coords)
+                                ys = set(round(p[1], 1) for p in pixel_coords)
+                                if len(xs) == 2 and len(ys) == 2:
+                                    ann['annotationType'] = 'rectangle'
+                            annotations.append(ann)
                     annotation_data = annotations
                     break  # 找到标注文件后跳出循环
                 except Exception as e:

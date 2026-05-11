@@ -98,14 +98,15 @@ export function addNewObject() {
     }
     
     const newObject = {
-        id: getNextAvailableId(),  // 使用最小可用ID
+        id: getNextAvailableId(),
         color: defaultColor,
         classId: defaultClassId,
         points: [],
         maskData: null,
         boxData: null,
+        obbData: null,
         isVisible: true,
-        annotationType: 'sam', // 标注类型：sam, rectangle, polygon
+        annotationType: 'sam', // 标注类型：sam, rectangle, polygon, obb
     };
     
     annotationState.objects.push(newObject);
@@ -241,7 +242,9 @@ export function loadAnnotationFromData(data) {
             points: obj.points || [],
             maskData: obj.maskData || obj.mask_data || null,
             boxData: obj.boxData || obj.box_data || null,
+            obbData: obj.obbData || obj.obb_data || null,
             isVisible: obj.isVisible !== undefined ? obj.isVisible : true,
+            annotationType: obj.annotationType || obj.annotation_type || 'sam',
         })),
         activeObjectIndex: -1,
         nextId: Math.max(...data.objects.map(obj => obj.id || 0), 0) + 1,
@@ -263,6 +266,8 @@ export function serializeAnnotationState() {
             points: obj.points,
             mask_data: obj.maskData,
             box_data: obj.boxData,
+            obb_data: obj.obbData || null,
+            annotation_type: obj.annotationType || 'sam',
             is_visible: obj.isVisible
         }))
     };

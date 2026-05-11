@@ -221,7 +221,9 @@ function initAnnotationStateWithData(annotations) {
         color: getColorForLabel(ann.classId, labels),
         points: [],
         maskData: ann.maskData,
-        boxData: calculateBoxData(ann.maskData),
+        boxData: ann.boxData || calculateBoxData(ann.maskData),
+        obbData: ann.obbData || null,
+        annotationType: ann.annotationType || 'sam',
         isVisible: true
     }));
     

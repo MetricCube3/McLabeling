@@ -118,6 +118,7 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
             images_dir = os.path.join(video_specific_dir, 'images')
             labels_dir = os.path.join(video_specific_dir, 'labels')
             labels_bbox_dir = os.path.join(video_specific_dir, 'labels_bbox')
+            labels_obb_dir = os.path.join(video_specific_dir, 'labels_obb')
             output_basename = os.path.splitext(os.path.basename(image_to_overwrite))[0]
         else:
             # 新文件保存逻辑
@@ -133,9 +134,11 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
             images_dir = os.path.join(video_specific_dir, 'images')
             labels_dir = os.path.join(video_specific_dir, 'labels')
             labels_bbox_dir = os.path.join(video_specific_dir, 'labels_bbox')
+            labels_obb_dir = os.path.join(video_specific_dir, 'labels_obb')
             os.makedirs(images_dir, exist_ok=True)
             os.makedirs(labels_dir, exist_ok=True)
             os.makedirs(labels_bbox_dir, exist_ok=True)
+            os.makedirs(labels_obb_dir, exist_ok=True)
 
             # 解析输出文件名 - 支持多种格式
             if is_video_task:
@@ -180,6 +183,7 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
         target_image_path = os.path.join(images_dir, f"{output_basename}.jpg")
         label_filepath = os.path.join(labels_dir, f"{output_basename}.txt")
         label_bbox_filepath = os.path.join(labels_bbox_dir, f"{output_basename}.txt")
+        label_obb_filepath = os.path.join(labels_obb_dir, f"{output_basename}.txt")
 
         # 过滤有效对象（必须有maskData）
         valid_objects = [obj for obj in request.objects if obj.get('maskData')]
@@ -195,6 +199,10 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
             if os.path.exists(label_bbox_filepath):
                 os.remove(label_bbox_filepath)
                 deleted_files.append("边界框标注文件")
+
+            if os.path.exists(label_obb_filepath):
+                os.remove(label_obb_filepath)
+                deleted_files.append("OBB标注文件")
 
             # 关键修改：对于抽帧图片，不删除原始图片
             if os.path.exists(target_image_path):
@@ -284,6 +292,24 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                         # 写入YOLO格式的边界框标注
                         f_bbox.write(
                             f"{class_id} {center_x_norm:.6f} {center_y_norm:.6f} {width_norm:.6f} {height_norm:.6f}\n")
+
+            # 保存 OBB 标注（YOLOv8-OBB 格式：4角点归一化坐标）
+            obb_objects = [obj for obj in valid_objects if obj.get('annotationType') == 'obb' and obj.get('obbData')]
+            if obb_objects:
+                os.makedirs(labels_obb_dir, exist_ok=True)
+                with open(label_obb_filepath, 'w', encoding='utf-8') as f_obb:
+                    for obj in obb_objects:
+                        class_id = obj.get('classId', 0)
+                        obb_corners = obj['obbData']  # [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+                        if len(obb_corners) == 4:
+                            coords = []
+                            for x, y in obb_corners:
+                                nx = max(0.0, min(1.0, x / image_width))
+                                ny = max(0.0, min(1.0, y / image_height))
+                                coords.extend([f"{nx:.6f}", f"{ny:.6f}"])
+                            f_obb.write(f"{class_id} {' '.join(coords)}\n")
+            elif os.path.exists(label_obb_filepath):
+                os.remove(label_obb_filepath)
 
             message = "标注覆盖保存成功" if request.overwrite_path else "标注保存成功"
 

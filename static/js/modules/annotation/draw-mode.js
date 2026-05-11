@@ -9,7 +9,8 @@ import { eventBus, EVENTS } from '../../core/event-bus.js';
 export const DRAW_MODE = {
     SAM: 'sam',
     RECTANGLE: 'rectangle',
-    POLYGON: 'polygon'
+    POLYGON: 'polygon',
+    OBB: 'obb'
 };
 
 // 当前绘制模式
@@ -30,6 +31,7 @@ function setupModeButtons() {
     const samBtn = document.getElementById('sam-mode-btn');
     const rectBtn = document.getElementById('rect-mode-btn');
     const polygonBtn = document.getElementById('polygon-mode-btn');
+    const obbBtn = document.getElementById('obb-mode-btn');
     
     if (samBtn) {
         samBtn.addEventListener('click', () => setDrawMode(DRAW_MODE.SAM));
@@ -41,6 +43,10 @@ function setupModeButtons() {
     
     if (polygonBtn) {
         polygonBtn.addEventListener('click', () => setDrawMode(DRAW_MODE.POLYGON));
+    }
+    
+    if (obbBtn) {
+        obbBtn.addEventListener('click', () => setDrawMode(DRAW_MODE.OBB));
     }
 }
 
@@ -71,6 +77,10 @@ function setupKeyboardShortcuts() {
                 break;
             case 'p':
                 setDrawMode(DRAW_MODE.POLYGON);
+                e.preventDefault();
+                break;
+            case 'o':
+                setDrawMode(DRAW_MODE.OBB);
                 e.preventDefault();
                 break;
         }
@@ -104,7 +114,8 @@ function updateModeButtons() {
     const buttons = {
         [DRAW_MODE.SAM]: document.getElementById('sam-mode-btn'),
         [DRAW_MODE.RECTANGLE]: document.getElementById('rect-mode-btn'),
-        [DRAW_MODE.POLYGON]: document.getElementById('polygon-mode-btn')
+        [DRAW_MODE.POLYGON]: document.getElementById('polygon-mode-btn'),
+        [DRAW_MODE.OBB]: document.getElementById('obb-mode-btn')
     };
     
     Object.entries(buttons).forEach(([mode, btn]) => {

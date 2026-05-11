@@ -577,7 +577,7 @@
                                 <div class="shortcut-item"><kbd>S</kbd> 保存</div>
                                 <div class="shortcut-item"><kbd>R</kbd> 清空</div>
                                 <div class="shortcut-item"><kbd>X</kbd> 添加标注</div>
-                                <div class="shortcut-item"><kbd>M</kbd>/<kbd>B</kbd>/<kbd>P</kbd> 切换标注模式</div>
+                                <div class="shortcut-item"><kbd>M</kbd>/<kbd>B</kbd>/<kbd>P</kbd>/<kbd>O</kbd> 切换标注模式</div>
                                 <div class="shortcut-item"><kbd>ESC</kbd> 取消/返回</div>
                             </div>
                         </div>
@@ -590,10 +590,13 @@
                                 <span class="btn-icon icon-sam">✨</span>
                             </button>
                             <button id="rect-mode-btn" class="mode-toggle-btn" title="矩形框标注 (快捷键: B)&#10;按住拖拽绘制矩形框">
-                                <span class="btn-icon icon-rect">▭</span>
+                                <span class="btn-icon icon-rect"><svg viewBox="0 0 20 20" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2" y="5.5" width="16" height="9"/></svg></span>
                             </button>
                             <button id="polygon-mode-btn" class="mode-toggle-btn" title="多边形标注 (快捷键: P)&#10;点击添加顶点，点击首点或双击完成">
-                                <span class="btn-icon icon-polygon">⬠</span>
+                                <span class="btn-icon icon-polygon"><svg viewBox="0 0 20 20" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><polygon points="10,2 17.5,7.3 14.5,16 5.5,16 2.5,7.3"/></svg></span>
+                            </button>
+                            <button id="obb-mode-btn" class="mode-toggle-btn" title="旋转框标注 OBB (快捷键: O)&#10;三点法：点击A→点击B定边→移动预览→点击C完成">
+                                <span class="btn-icon icon-obb"><svg viewBox="0 0 20 20" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><polygon points="6,3 17,6 14,17 3,14"/></svg></span>
                             </button>
                             
                             <!-- 功能分隔线 -->

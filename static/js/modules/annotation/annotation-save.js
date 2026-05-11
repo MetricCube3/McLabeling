@@ -120,13 +120,20 @@ export async function saveAnnotations() {
         return true;
     });
     
+    // 将 obbData 和 annotationType 加入 payload，供后端保存
+    const validObjectsWithObb = validObjects.map(obj => ({
+        ...obj,
+        obbData: obj.obbData || null,
+        annotationType: obj.annotationType || 'sam'
+    }));
+    
     // 检查是否是抽帧图片
     const isExtractedFrame = displayImage.src.includes('/extracted/');
     const frameInfo = getCurrentFrameInfo();
     
     const payload = {
         status: 'success',
-        objects: validObjects,
+        objects: validObjectsWithObb,
         frameUrl: new URL(displayImage.src).pathname,
         videoPath: frameInfo.videoPath,
         imageWidth: imageDimensions.naturalWidth,

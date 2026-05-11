@@ -41,6 +41,8 @@ export function init() {
     eventBus.on('manual-draw:rectangle-preview', handleRectanglePreview);
     eventBus.on('manual-draw:polygon-updated', handlePolygonUpdated);
     eventBus.on('manual-draw:polygon-preview', handlePolygonPreview);
+    eventBus.on('manual-draw:obb-updated', () => redrawAll());
+    eventBus.on('manual-draw:obb-preview', () => redrawAll());
     eventBus.on('manual-draw:completed', redrawAll);
     eventBus.on('manual-draw:cancelled', redrawAll);
 }
@@ -97,17 +99,18 @@ function drawAllMasks() {
                                  index === hoverState.objectIndex ||
                                  index === highlightedObjectIndex;
             
-            // 判断是否为矩形框标注（没有annotationType字段则默认为SAM，显示背景色）
+            // 判断标注类型
             const isRectangle = obj.annotationType === 'rectangle';
+            const isObbType = obj.annotationType === 'obb';
             
-            // 矩形框标注：仅在选定时显示背景色；其他标注（SAM、多边形）：总是显示背景色
-            const shouldFill = !isRectangle || isHighlighted;
+            // 矩形框/OBB：仅在选定时显示背景色；SAM/多边形：总是显示背景色
+            const shouldFill = (!isRectangle && !isObbType) || isHighlighted;
             
             if (shouldFill) {
                 // 根据标注类型设置不同的透明度
                 let fillOpacity;
-                if (isRectangle && isHighlighted) {
-                    // 矩形框选定状态：使用更浅的背景色（0.25）
+                if ((isRectangle || isObbType) && isHighlighted) {
+                    // 矩形框/OBB 选定状态：使用更浅的背景色（0.25）
                     fillOpacity = 0.25;
                 } else if (isHighlighted) {
                     // SAM/多边形选定状态：0.6
@@ -159,7 +162,7 @@ function drawAllMasks() {
             } else {
                 // 非选定状态：绘制轮廓线（保持原有视觉效果）
                 ctx.strokeStyle = hexToRgba(obj.color, 0.85);
-                ctx.lineWidth = 1;
+                ctx.lineWidth = (isRectangle || isObbType) ? 1.5 : 1;
                 ctx.lineJoin = 'round';
                 
                 obj.maskData.forEach(polygon => {
@@ -240,30 +243,50 @@ function drawObjectHighlights() {
         
         ctx.save();
         
+        // OBB：预计算旋转矩形角点，并以最高角点（最小 canvas Y）作为标签锚点
+        const isObb = obj.annotationType === 'obb' && obj.maskData && obj.maskData[0] && obj.maskData[0].length === 4;
+        let obbCorners = null;
+        let labelAnchorX = p1.x;
+        let labelAnchorY = p1.y;
+        if (isObb) {
+            obbCorners = obj.maskData[0].map(pt => scaleCoordsToCanvas(pt));
+            const topCorner = obbCorners.reduce((min, c) => c.y < min.y ? c : min, obbCorners[0]);
+            labelAnchorX = topCorner.x;
+            labelAnchorY = topCorner.y;
+        }
+        
         if (isActive || isListHighlighted) {
-            // active 或列表高亮：粗边框带发光效果
             ctx.strokeStyle = obj.color;
             ctx.lineWidth = 3;
             ctx.shadowColor = obj.color;
             ctx.shadowBlur = 10;
-            ctx.strokeRect(p1.x, p1.y, width, height);
+            
+            if (isObb) {
+                // OBB：绘制旋转矩形边框
+                ctx.beginPath();
+                ctx.moveTo(obbCorners[0].x, obbCorners[0].y);
+                for (let i = 1; i < obbCorners.length; i++) ctx.lineTo(obbCorners[i].x, obbCorners[i].y);
+                ctx.closePath();
+                ctx.stroke();
+            } else {
+                // 其他类型：原有 AABB 矩形
+                ctx.strokeRect(p1.x, p1.y, width, height);
+            }
             ctx.shadowBlur = 0;
             
-            // 绘制角标增强视觉效果
-            const cornerLength = Math.min(15, width * 0.15, height * 0.15);
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            // 左上角
-            ctx.moveTo(p1.x, p1.y + cornerLength); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p1.x + cornerLength, p1.y);
-            // 右上角
-            ctx.moveTo(p2.x - cornerLength, p1.y); ctx.lineTo(p2.x, p1.y); ctx.lineTo(p2.x, p1.y + cornerLength);
-            // 左下角
-            ctx.moveTo(p1.x, p2.y - cornerLength); ctx.lineTo(p1.x, p2.y); ctx.lineTo(p1.x + cornerLength, p2.y);
-            // 右下角
-            ctx.moveTo(p2.x - cornerLength, p2.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p2.x, p2.y - cornerLength);
-            ctx.stroke();
+            if (!isObb) {
+                // 角标装饰（仅非OBB）
+                const cornerLength = Math.min(15, width * 0.15, height * 0.15);
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y + cornerLength); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p1.x + cornerLength, p1.y);
+                ctx.moveTo(p2.x - cornerLength, p1.y); ctx.lineTo(p2.x, p1.y); ctx.lineTo(p2.x, p1.y + cornerLength);
+                ctx.moveTo(p1.x, p2.y - cornerLength); ctx.lineTo(p1.x, p2.y); ctx.lineTo(p1.x + cornerLength, p2.y);
+                ctx.moveTo(p2.x - cornerLength, p2.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p2.x, p2.y - cornerLength);
+                ctx.stroke();
+            }
             
-            // 绘制标签
+            // 标签：OBB 用最高角点锚点，其他类型用 AABB 左上角
             const labels = appState.getState('labels') || [];
             const matchedLabel = labels.find(l => l.id === obj.classId);
             const labelText = matchedLabel ? matchedLabel.name : `标签 ${obj.classId}`;
@@ -273,15 +296,24 @@ function drawObjectHighlights() {
             const labelHeight = 22;
             
             ctx.fillStyle = obj.color;
-            ctx.fillRect(p1.x, p1.y - labelHeight, labelWidth, labelHeight);
+            ctx.fillRect(labelAnchorX, labelAnchorY - labelHeight, labelWidth, labelHeight);
             ctx.fillStyle = 'white';
             ctx.textBaseline = 'middle';
-            ctx.fillText(labelText, p1.x + 6, p1.y - labelHeight / 2);
+            ctx.fillText(labelText, labelAnchorX + 6, labelAnchorY - labelHeight / 2);
         } else if (isHovered) {
-            // 仅悬停：中等边框
             ctx.strokeStyle = obj.color;
             ctx.lineWidth = 2;
-            ctx.strokeRect(p1.x, p1.y, width, height);
+            
+            if (isObb) {
+                // OBB：绘制旋转矩形
+                ctx.beginPath();
+                ctx.moveTo(obbCorners[0].x, obbCorners[0].y);
+                for (let i = 1; i < obbCorners.length; i++) ctx.lineTo(obbCorners[i].x, obbCorners[i].y);
+                ctx.closePath();
+                ctx.stroke();
+            } else {
+                ctx.strokeRect(p1.x, p1.y, width, height);
+            }
             
             const labelsHover = appState.getState('labels') || [];
             const matchedLabelHover = labelsHover.find(l => l.id === obj.classId);
@@ -291,10 +323,10 @@ function drawObjectHighlights() {
             const labelWidthHover = Math.max(textWidthHover + 12, 60);
             
             ctx.fillStyle = obj.color;
-            ctx.fillRect(p1.x, p1.y - 20, labelWidthHover, 20);
+            ctx.fillRect(labelAnchorX, labelAnchorY - 20, labelWidthHover, 20);
             ctx.fillStyle = 'white';
             ctx.textBaseline = 'middle';
-            ctx.fillText(labelTextHover, p1.x + 6, p1.y - 10);
+            ctx.fillText(labelTextHover, labelAnchorX + 6, labelAnchorY - 10);
         }
         
         ctx.restore();
@@ -315,7 +347,7 @@ function handleCanvasMouseDown(e) {
     if (!imageCoords) return;
     
     // 根据绘制模式分发处理
-    if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON) {
+    if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.OBB) {
         const annotationState = getAnnotationState();
         if (!annotationState.objects || annotationState.activeObjectIndex === -1) return;
         
@@ -354,7 +386,7 @@ function handleCanvasClickEvent(e) {
 function handleCanvasDblClick(e) {
     const mode = getCurrentDrawMode();
     
-    if (mode === DRAW_MODE.POLYGON) {
+    if (mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.OBB) {
         e.preventDefault();
         manualDraw.handleDoubleClick(e);
     }
@@ -422,7 +454,7 @@ export function handleCanvasMouseMove(e) {
     const imageCoords = scaleCoordsToImage(canvasCoords);
     
     // 手动绘制模式下的处理
-    if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON) {
+    if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.OBB) {
         // 保存鼠标位置用于绘制十字准星
         const oldMousePos = currentMousePos;
         currentMousePos = canvasCoords;
@@ -727,9 +759,14 @@ function drawManualDrawingPreview() {
         ctx.restore();
     }
     
-    // 绘制虚线十字准星（矩形和多边形模式下）
+    // 绘制 OBB 局部预览
+    if (drawingState.obb.phase >= 1) {
+        drawObbPreview(drawingState.obb, activeColor);
+    }
+    
+    // 绘制虚线十字准星（矩形、多边形、OBB 模式下）
     const mode = getCurrentDrawMode();
-    if ((mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON) && currentMousePos && canvas) {
+    if ((mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.OBB) && currentMousePos && canvas) {
         // 获取图像显示区域
         const displayRect = getImageDisplayRect();
         
@@ -760,6 +797,73 @@ function drawManualDrawingPreview() {
             ctx.restore();
         }
     }
+}
+
+/**
+ * 绘制 OBB 局部预览
+ */
+function drawObbPreview(obb, activeColor) {
+    if (!obb.pointA) return;
+    
+    ctx.save();
+    ctx.strokeStyle = activeColor;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    
+    if (obb.phase === 1) {
+        // 只显示 A 点，等待 B（鼠标移动时由十字准星提示方向）
+        const cA = scaleCoordsToCanvas(obb.pointA);
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(cA.x, cA.y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = activeColor;
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } else if (obb.phase === 2) {
+        // 显示 A→B 边（实线）+ 预览矩形（虚线）
+        const cA = scaleCoordsToCanvas(obb.pointA);
+        const cB = scaleCoordsToCanvas(obb.pointB);
+        
+        // A→B 实线
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cA.x, cA.y);
+        ctx.lineTo(cB.x, cB.y);
+        ctx.stroke();
+        
+        // A、B 点
+        [cA, cB].forEach((cp, i) => {
+            ctx.beginPath();
+            ctx.arc(cp.x, cp.y, i === 0 ? 6 : 5, 0, 2 * Math.PI);
+            ctx.fillStyle = activeColor;
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+        
+        // 如果有预览角点，绘制完整虚线矩形
+        if (obb.previewCorners && obb.previewCorners.length === 4) {
+            const corners = obb.previewCorners.map(p => scaleCoordsToCanvas(p));
+            ctx.strokeStyle = activeColor;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.fillStyle = hexToRgba(activeColor, 0.1);
+            ctx.beginPath();
+            ctx.moveTo(corners[0].x, corners[0].y);
+            for (let i = 1; i < corners.length; i++) {
+                ctx.lineTo(corners[i].x, corners[i].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+    
+    ctx.restore();
 }
 
 /**
