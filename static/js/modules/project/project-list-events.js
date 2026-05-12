@@ -252,6 +252,7 @@ async function showAggregateStats(selectedTasks, projectName) {
                             <div class="format-select-wrapper">
                                 <select id="export-format-select" class="format-select">
                                     <option value="yolo">YOLO格式 (分割+bbox)</option>
+                                    <option value="yolo_obb">YOLO格式 (OBB旋转框)</option>
                                     <option value="coco">COCO格式 (标准JSON格式)</option>
                                 </select>
                                 <div class="select-arrow">▼</div>
@@ -413,6 +414,9 @@ function setupExportButton(modal, taskPaths, projectName, stats) {
             if (exportFormat === 'coco') {
                 endpoint = '/api/admin/export_project_tasks_coco';
                 exportBtn.innerHTML = '<span class="btn-icon">⏳</span>正在导出COCO格式...';
+            } else if (exportFormat === 'yolo_obb') {
+                endpoint = '/api/admin/export_project_tasks';
+                exportBtn.innerHTML = '<span class="btn-icon">⏳</span>正在导出YOLO OBB格式...';
             } else {
                 endpoint = '/api/admin/export_project_tasks';
                 exportBtn.innerHTML = '<span class="btn-icon">⏳</span>正在导出YOLO格式...';
@@ -426,7 +430,8 @@ function setupExportButton(modal, taskPaths, projectName, stats) {
                     train: trainRatio,
                     val: valRatio,
                     test: testRatio
-                }
+                },
+                export_format: exportFormat
             };
 
             const response = await fetch(endpoint, {
@@ -448,6 +453,8 @@ function setupExportButton(modal, taskPaths, projectName, stats) {
                 let filename;
                 if (exportFormat === 'coco') {
                     filename = `project_${projectName}_coco_export.zip`;
+                } else if (exportFormat === 'yolo_obb') {
+                    filename = `project_${projectName}_yolo_obb_export.zip`;
                 } else {
                     filename = `project_${projectName}_yolo_export.zip`;
                 }

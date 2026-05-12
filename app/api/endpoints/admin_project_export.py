@@ -99,6 +99,68 @@ def collect_annotation_data(task_paths: List[str], project_name: str, db: Sessio
                     }
 
 
+def collect_obb_annotation_data(task_paths: List[str], project_name: str, db: Session):
+    """
+    收集所有任务的OBB标注数据（只收集labels_obb目录下的数据）
+
+    优化：使用生成器减少内存占用
+    """
+    for task_path in task_paths:
+        # 解析任务名称
+        if '.' in os.path.basename(task_path):
+            # 视频任务，去掉扩展名
+            task_name = os.path.splitext(os.path.basename(task_path))[0]
+        else:
+            # 图片任务
+            task_name = os.path.basename(task_path)
+
+        # 解析项目名称
+        if '/' in task_path:
+            task_project = task_path.split('/')[0]
+        else:
+            task_project = project_name
+
+        # 查找标注目录
+        annotation_dirs = [
+            os.path.join(SUCCESS_DIR, task_project, task_name),
+            os.path.join(REVIEW_DIR, task_project, task_name)
+        ]
+
+        for annotation_dir in annotation_dirs:
+            if not os.path.exists(annotation_dir):
+                continue
+
+            images_dir = os.path.join(annotation_dir, 'images')
+            labels_obb_dir = os.path.join(annotation_dir, 'labels_obb')
+
+            if not os.path.exists(images_dir) or not os.path.exists(labels_obb_dir):
+                continue
+
+            # 遍历labels_obb目录下的标注文件
+            for label_file in os.listdir(labels_obb_dir):
+                if not label_file.endswith('.txt'):
+                    continue
+
+                base_name = os.path.splitext(label_file)[0]
+                
+                # 查找对应的图片文件
+                image_path = None
+                for ext in ['.jpg', '.jpeg', '.png']:
+                    potential_path = os.path.join(images_dir, base_name + ext)
+                    if os.path.exists(potential_path):
+                        image_path = potential_path
+                        break
+
+                if image_path:
+                    label_obb_path = os.path.join(labels_obb_dir, label_file)
+                    yield {
+                        'image_path': image_path,
+                        'label_obb_path': label_obb_path,
+                        'task_name': task_name,
+                        'task_path': task_path
+                    }
+
+
 def split_dataset(data_items: List[Dict], split_ratios: Dict[str, int]):
     """
     随机划分数据集
@@ -219,6 +281,88 @@ def export_yolo_format(export_dir: str, split_data: Dict, project_labels: List[D
         "project": project_name,
         "tasks": task_paths,
         "format": "YOLO",
+        "split_ratios": split_ratios,
+        "total_images": counts['total'],
+        "train_images": counts['train'],
+        "val_images": counts['val'],
+        "test_images": counts['test'],
+        "labels": project_labels,
+        "export_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+
+    with open(os.path.join(export_dir, 'dataset_info.json'), 'w', encoding='utf-8') as f:
+        json.dump(dataset_info, f, indent=2, ensure_ascii=False)
+
+    return counts
+
+
+def export_yolo_obb_format(export_dir: str, split_data: Dict, project_labels: List[Dict],
+                           project_name: str, task_paths: List[str], split_ratios: Dict):
+    """
+    导出YOLO OBB格式数据（旋转框）
+
+    目录结构:
+    dataset_obb/
+      ├── images/
+      │   ├── train/
+      │   ├── val/
+      │   └── test/
+      ├── labels_obb/
+      │   ├── train/
+      │   ├── val/
+      │   └── test/
+      ├── labels.txt
+      └── dataset_info.json
+    """
+    # 创建目录结构
+    images_dir = os.path.join(export_dir, 'images')
+    labels_obb_dir = os.path.join(export_dir, 'labels_obb')
+
+    for split in ['train', 'val', 'test']:
+        os.makedirs(os.path.join(images_dir, split), exist_ok=True)
+        os.makedirs(os.path.join(labels_obb_dir, split), exist_ok=True)
+
+    # 复制文件
+    image_counter = 0
+    for split_name in ['train', 'val', 'test']:
+        data_items = split_data[split_name]
+
+        for item in data_items:
+            # 生成新文件名
+            ext = os.path.splitext(item['image_path'])[1]
+            new_image_name = f"{split_name}_{image_counter:06d}{ext}"
+            new_label_name = f"{split_name}_{image_counter:06d}.txt"
+
+            # 复制图片
+            shutil.copy2(
+                item['image_path'],
+                os.path.join(images_dir, split_name, new_image_name)
+            )
+
+            # 复制OBB标注
+            if item.get('label_obb_path'):
+                shutil.copy2(
+                    item['label_obb_path'],
+                    os.path.join(labels_obb_dir, split_name, new_label_name)
+                )
+
+            image_counter += 1
+
+    # 创建标签映射文件
+    labels_content = ""
+    for label in sorted(project_labels, key=lambda x: x.get('id', 0)):
+        labels_content += f"{label['id']} {label['name']}\n"
+
+    with open(os.path.join(export_dir, 'labels.txt'), 'w', encoding='utf-8') as f:
+        f.write(labels_content)
+
+    # 创建数据集信息文件
+    counts = split_data['counts']
+    dataset_info = {
+        "project": project_name,
+        "tasks": task_paths,
+        "format": "YOLO-OBB",
+        "description": "YOLOv8 Oriented Bounding Box (OBB) format with 4 corner points",
         "split_ratios": split_ratios,
         "total_images": counts['total'],
         "train_images": counts['train'],
@@ -413,7 +557,7 @@ def export_project_tasks(request: ExportProjectTasksRequest, db: Session = Depen
     - 支持选择多个任务
     - 合并所有标注数据
     - 随机划分训练集/验证集/测试集
-    - 支持YOLO和COCO两种格式
+    - 支持YOLO、YOLO-OBB和COCO三种格式
 
     优化：
     - 使用生成器收集数据，减少内存占用
@@ -428,7 +572,7 @@ def export_project_tasks(request: ExportProjectTasksRequest, db: Session = Depen
         raise HTTPException(status_code=400, detail="缺少必要参数")
 
     # 验证格式
-    if request.export_format not in ['yolo', 'coco']:
+    if request.export_format not in ['yolo', 'yolo_obb', 'coco']:
         raise HTTPException(status_code=400, detail="不支持的导出格式")
 
     temp_dir = None
@@ -466,7 +610,11 @@ def export_project_tasks(request: ExportProjectTasksRequest, db: Session = Depen
 
         # === Step 2: 收集所有标注数据 ===
         logger.info("Collecting annotation data...")
-        data_items = list(collect_annotation_data(request.task_paths, request.project_name, db))
+        # 根据导出格式选择不同的数据收集函数
+        if request.export_format == 'yolo_obb':
+            data_items = list(collect_obb_annotation_data(request.task_paths, request.project_name, db))
+        else:
+            data_items = list(collect_annotation_data(request.task_paths, request.project_name, db))
 
         if not data_items:
             raise HTTPException(status_code=404, detail="选中的任务中没有找到可导出的标注数据")
@@ -490,6 +638,13 @@ def export_project_tasks(request: ExportProjectTasksRequest, db: Session = Depen
             export_yolo_format(export_dir, split_data, project_labels,
                                request.project_name, request.task_paths, request.split_ratios)
             zip_filename = f"{request.project_name}_yolo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        elif request.export_format == 'yolo_obb':
+            export_dir = os.path.join(temp_dir, 'dataset_obb')
+            os.makedirs(export_dir)
+            logger.info("Exporting YOLO-OBB format...")
+            export_yolo_obb_format(export_dir, split_data, project_labels,
+                                   request.project_name, request.task_paths, request.split_ratios)
+            zip_filename = f"{request.project_name}_yolo_obb_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
         else:  # coco
             export_dir = os.path.join(temp_dir, 'coco_dataset')
             os.makedirs(export_dir)
@@ -520,7 +675,7 @@ def export_project_tasks(request: ExportProjectTasksRequest, db: Session = Depen
 
         return {
             "download_url": download_url,
-            "message": f"成功导出 {request.export_format.upper()} 格式数据：共{counts['total']}张图片，"
+            "message": f"成功导出 {request.export_format.replace('_', '-').upper()} 格式数据：共{counts['total']}张图片，"
                        f"训练集{counts['train']}张, 验证集{counts['val']}张, 测试集{counts['test']}张",
             "stats": {
                 "format": request.export_format,
