@@ -22,7 +22,7 @@
 2. 查看项目的标注进度和统计情况
 3. 在项目统计中，**汇总选择特定任务（可多选）导出标注数据**
 
-<img src="imgs/export.png" alt="export" width="70%">
+<img src="imgs/export.png" alt="export" width="50%">
 
 ## 4. 标签管理（管理员）
 
@@ -39,7 +39,7 @@
 2. 分配状态已完成的任务给审核员
 
 ## 7. 标注操作
-<img src="imgs/labeling.png" alt="labeling" width="90%">
+<img src="imgs/labeling.png" alt="labeling" width="50%">
 
 📖 **详细标注操作指南**：[手动标注操作详解](manual_annotation_guide.md)
 
@@ -60,4 +60,4 @@
 
 3. 模型训练，训练后的模型可以保存到模型列表中，用于自动标注
 
-<img src="imgs/model_manage.png" alt="model_manage" width="90%">
+<img src="imgs/model_manage.png" alt="model_manage" width="60%">
