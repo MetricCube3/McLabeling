@@ -569,19 +569,32 @@ export function handleCanvasMouseMove(e) {
     
     for (let i = annotationState.objects.length - 1; i >= 0; i--) {
         const obj = annotationState.objects[i];
-        const box = obj.boxData;
         
-        if (!obj.isVisible || !box) {
+        if (!obj.isVisible || !obj.maskData) {
             continue;
         }
         
-        if (obj.isVisible && box) {
-            const p1 = scaleCoordsToCanvas({ x: box[0], y: box[1] });
-            const p2 = scaleCoordsToCanvas({ x: box[2], y: box[3] });
-            if (canvasCoords.x >= p1.x && canvasCoords.x <= p2.x && 
-                canvasCoords.y >= p1.y && canvasCoords.y <= p2.y) {
-                hoverState.objectIndex = i;
-                break;
+        if (obj.annotationType === 'rectangle') {
+            // 矩形：使用 boxData 矩形区域检测
+            const box = obj.boxData;
+            if (box) {
+                const p1 = scaleCoordsToCanvas({ x: box[0], y: box[1] });
+                const p2 = scaleCoordsToCanvas({ x: box[2], y: box[3] });
+                if (canvasCoords.x >= p1.x && canvasCoords.x <= p2.x && 
+                    canvasCoords.y >= p1.y && canvasCoords.y <= p2.y) {
+                    hoverState.objectIndex = i;
+                    break;
+                }
+            }
+        } else {
+            // 多边形/OBB/SAM：使用实际多边形区域检测
+            const polygon = obj.maskData[0];
+            if (polygon && polygon.length >= 3) {
+                const canvasPoints = polygon.map(p => scaleCoordsToCanvas({ x: p[0], y: p[1] }));
+                if (isPointInPolygon(canvasCoords, canvasPoints)) {
+                    hoverState.objectIndex = i;
+                    break;
+                }
             }
         }
     }
@@ -998,6 +1011,21 @@ function handlePolygonUpdated() {
  */
 function handlePolygonPreview() {
     redrawAll();
+}
+
+/**
+ * 点是否在多边形内部（射线法）
+ */
+function isPointInPolygon(point, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].x, yi = polygon[i].y;
+        const xj = polygon[j].x, yj = polygon[j].y;
+        const intersect = ((yi > point.y) !== (yj > point.y)) &&
+            (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
 }
 
 export default {
