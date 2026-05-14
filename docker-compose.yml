@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: mclabeling:latest
+    image: mclabeling:app
     container_name: mclabeling_app
     restart: unless-stopped
     
