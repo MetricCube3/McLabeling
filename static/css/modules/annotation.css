@@ -1272,6 +1272,54 @@
     text-align: center;
 }
 
+/* 保存自动跳转开关 */
+.auto-advance-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.auto-advance-toggle input {
+    display: none;
+}
+
+.auto-advance-slider {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--border-color);
+    border-radius: 10px;
+    transition: background 0.3s;
+}
+
+.auto-advance-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.auto-advance-toggle input:checked + .auto-advance-slider {
+    background: #4caf50;
+}
+
+.auto-advance-toggle input:checked + .auto-advance-slider::after {
+    transform: translateX(16px);
+}
+
+.auto-advance-label {
+    white-space: nowrap;
+}
+
 .action-controls {
     display: flex;
     gap: 10px;

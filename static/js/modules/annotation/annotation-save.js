@@ -249,13 +249,15 @@ export async function saveAnnotationsSilent() {
  */
 function handlePostSaveNavigation(validObjects, isExtractedFrame, appMode) {
     const nextFrameBtn = document.getElementById('next-frame-btn');
+    const autoAdvance = document.getElementById('auto-advance-checkbox');
+    const shouldAdvance = autoAdvance ? autoAdvance.checked : true;
     
     if (validObjects.length === 0) {
         // 清空标注的情况
         if (appMode === 'review') {
             // 审核模式：通过事件通知review模块处理
             eventBus.emit('review:annotation-cleared');
-        } else {
+        } else if (shouldAdvance) {
             // 标注模式：跳转到下一帧
             if (nextFrameBtn) {
                 nextFrameBtn.click();
@@ -263,12 +265,12 @@ function handlePostSaveNavigation(validObjects, isExtractedFrame, appMode) {
         }
     } else {
         // 正常保存的情况
-        if (appMode === 'annotate') {
+        if (appMode === 'annotate' && shouldAdvance) {
             // 标注模式：自动跳转到下一帧
             if (nextFrameBtn) {
                 nextFrameBtn.click();
             }
-        } else {
+        } else if (appMode === 'review') {
             // 审核模式：重新绘制以确保状态同步
             setTimeout(() => {
                 redrawAll();
