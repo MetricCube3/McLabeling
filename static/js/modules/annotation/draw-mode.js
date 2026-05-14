@@ -4,6 +4,7 @@
  */
 
 import { eventBus, EVENTS } from '../../core/event-bus.js';
+import { getAnnotationState } from './annotation-state.js';
 
 // 绘制模式枚举
 export const DRAW_MODE = {
@@ -22,6 +23,9 @@ let currentDrawMode = DRAW_MODE.SAM;
 export function init() {
     setupModeButtons();
     setupKeyboardShortcuts();
+    
+    // 选定标注对象时自动切换到对应的标注模式
+    eventBus.on(EVENTS.ANNOTATION_ACTIVE_OBJECT_CHANGED, handleActiveObjectChanged);
 }
 
 /**
@@ -96,6 +100,16 @@ export function setDrawMode(mode) {
     currentDrawMode = mode;
     updateModeButtons();
     
+    // 如果当前活动对象尚未标注，同步更新其标注类型
+    const annotationState = getAnnotationState();
+    const idx = annotationState.activeObjectIndex;
+    if (idx !== -1) {
+        const obj = annotationState.objects[idx];
+        if (obj && !obj.maskData) {
+            obj.annotationType = mode;
+        }
+    }
+    
     // 触发模式变化事件
     eventBus.emit('draw-mode:changed', mode);
 }
@@ -127,6 +141,30 @@ function updateModeButtons() {
             }
         }
     });
+}
+
+/**
+ * 处理活动对象变化：自动切换到对应标注模式
+ */
+function handleActiveObjectChanged(index) {
+    if (index === -1) return;
+    
+    const annotationState = getAnnotationState();
+    const obj = annotationState.objects[index];
+    if (!obj) return;
+    
+    // 根据对象的标注类型自动切换绘制模式
+    const typeToMode = {
+        'sam': DRAW_MODE.SAM,
+        'rectangle': DRAW_MODE.RECTANGLE,
+        'polygon': DRAW_MODE.POLYGON,
+        'obb': DRAW_MODE.OBB
+    };
+    
+    const targetMode = typeToMode[obj.annotationType];
+    if (targetMode && targetMode !== currentDrawMode) {
+        setDrawMode(targetMode);
+    }
 }
 
 export default {

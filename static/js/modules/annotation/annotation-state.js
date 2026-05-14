@@ -6,6 +6,7 @@
 
 import { appState } from '../../core/state.js';
 import { eventBus, EVENTS } from '../../core/event-bus.js';
+import { getCurrentDrawMode } from './draw-mode.js';
 
 // 默认颜色列表
 const COLORS = ['#FF3838', '#FF9D38', '#3877FF', '#38FFFF', '#8B38FF', '#FF38F5'];
@@ -106,7 +107,7 @@ export function addNewObject() {
         boxData: null,
         obbData: null,
         isVisible: true,
-        annotationType: 'sam', // 标注类型：sam, rectangle, polygon, obb
+        annotationType: getCurrentDrawMode(), // 标注类型：sam, rectangle, polygon, obb
     };
     
     annotationState.objects.push(newObject);
@@ -133,17 +134,14 @@ export function deleteObject(index) {
     annotationState.objects.splice(index, 1);
     
     if (annotationState.activeObjectIndex === index) {
+        // 删除的是当前选定对象，取消选定
         annotationState.activeObjectIndex = -1;
     } else if (annotationState.activeObjectIndex > index) {
+        // 选定对象在被删除对象之后，索引前移
         annotationState.activeObjectIndex--;
     }
     
-    // 删除后不自动添加新对象，允许列表为空
-    if (annotationState.objects.length > 0 && annotationState.activeObjectIndex === -1) {
-        setActiveObject(annotationState.objects.length - 1);
-    } else {
-        eventBus.emit(EVENTS.ANNOTATION_STATE_CHANGED, annotationState);
-    }
+    eventBus.emit(EVENTS.ANNOTATION_STATE_CHANGED, annotationState);
 }
 
 /**

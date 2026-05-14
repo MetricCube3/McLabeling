@@ -9,6 +9,7 @@ import { eventBus, EVENTS } from '../../core/event-bus.js';
 import { getAnnotationState, setActiveObject, toggleObjectVisibility, deleteObject, updateObjectClassId } from './annotation-state.js';
 import { getCurrentDrawMode, DRAW_MODE } from './draw-mode.js';
 import * as manualDraw from './manual-draw.js';
+import * as manualEdit from './manual-edit.js';
 
 // Canvas和图像相关的全局变量
 let canvas = null;
@@ -18,6 +19,7 @@ let imageDimensions = { width: 0, height: 0, naturalWidth: 0, naturalHeight: 0, 
 let hoverState = { pointIndex: -1, objectIndex: -1 };
 let highlightedObjectIndex = -1; // 来自列表悬停的高亮目标
 let currentMousePos = null; // 当前鼠标位置（用于绘制十字准星）
+let selectionJustHandled = false; // 防止mousedown选定后click再次触发
 
 /**
  * 初始化Canvas模块
@@ -45,6 +47,12 @@ export function init() {
     eventBus.on('manual-draw:obb-preview', () => redrawAll());
     eventBus.on('manual-draw:completed', redrawAll);
     eventBus.on('manual-draw:cancelled', redrawAll);
+    
+    // 初始化编辑模块并订阅编辑事件
+    manualEdit.init();
+    eventBus.on('manual-edit:updated', redrawAll);
+    eventBus.on('manual-edit:completed', redrawAll);
+    eventBus.on('manual-edit:cancelled', redrawAll);
 }
 
 /**
@@ -67,6 +75,7 @@ function setupCanvasEvents() {
 export function setImageDimensions(dims) {
     imageDimensions = dims;
     manualDraw.setImageDimensions(dims);
+    manualEdit.setImageDimensions(dims);
 }
 
 /**
@@ -80,6 +89,7 @@ export function redrawAll() {
     drawAllPoints();
     drawObjectHighlights();
     drawManualDrawingPreview();
+    drawEditHandles();
 }
 
 /**
@@ -334,6 +344,29 @@ function drawObjectHighlights() {
 }
 
 /**
+ * 尝试通过Canvas点击选定/切换标注对象
+ * 返回 true 表示已处理选定，调用方应 return
+ */
+function trySelectObject() {
+    const annotationState = getAnnotationState();
+    
+    // 如果正在多步绘制中，不拦截
+    if (manualDraw.isDrawing()) return false;
+    
+    const hoveredIdx = hoverState.objectIndex;
+    const activeIdx = annotationState.activeObjectIndex;
+    
+    // 点击了一个与当前活动对象不同的已有目标 → 选定/切换
+    if (hoveredIdx !== -1 && hoveredIdx !== activeIdx) {
+        setActiveObject(hoveredIdx);
+        selectionJustHandled = true;
+        return true;
+    }
+    
+    return false;
+}
+
+/**
  * 处理鼠标按下事件
  */
 function handleCanvasMouseDown(e) {
@@ -346,7 +379,18 @@ function handleCanvasMouseDown(e) {
     
     if (!imageCoords) return;
     
-    // 根据绘制模式分发处理
+    // 优先级1：如果正在编辑拖拽中，继续拖拽
+    if (manualEdit.isDragging()) return;
+    
+    // 优先级2：尝试选定/切换标注对象
+    if (trySelectObject()) return;
+    
+    // 优先级3：如果活动对象可编辑（已有maskData），尝试编辑操作
+    if (manualEdit.isEditable()) {
+        if (manualEdit.handleMouseDown(canvasCoords, imageCoords)) return;
+    }
+    
+    // 优先级4：根据绘制模式分发绘制处理
     if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.OBB) {
         const annotationState = getAnnotationState();
         if (!annotationState.objects || annotationState.activeObjectIndex === -1) return;
@@ -359,10 +403,13 @@ function handleCanvasMouseDown(e) {
  * 处理鼠标释放事件
  */
 function handleCanvasMouseUp(e) {
-    const mode = getCurrentDrawMode();
     const canvasCoords = getCanvasMousePos(e);
     const imageCoords = scaleCoordsToImage(canvasCoords);
     
+    // 优先处理编辑拖拽释放
+    if (manualEdit.handleMouseUp(canvasCoords, imageCoords)) return;
+    
+    const mode = getCurrentDrawMode();
     if (mode === DRAW_MODE.RECTANGLE) {
         manualDraw.handleMouseUp(e, canvasCoords, imageCoords);
     }
@@ -372,10 +419,19 @@ function handleCanvasMouseUp(e) {
  * 处理点击事件
  */
 function handleCanvasClickEvent(e) {
+    // 如果 mousedown 已经处理了选定/取消，跳过此次 click
+    if (selectionJustHandled) {
+        selectionJustHandled = false;
+        return;
+    }
+    
     const mode = getCurrentDrawMode();
     
     // SAM模式才使用点击事件
     if (mode === DRAW_MODE.SAM) {
+        // 优先尝试选定/切换标注对象
+        if (trySelectObject()) return;
+        
         handleCanvasClick(e, 1);
     }
 }
@@ -398,10 +454,15 @@ function handleCanvasDblClick(e) {
 function handleCanvasContextMenu(e) {
     e.preventDefault();
     
-    const mode = getCurrentDrawMode();
     const canvasCoords = getCanvasMousePos(e);
     const imageCoords = scaleCoordsToImage(canvasCoords);
     
+    // 优先处理编辑模式下的右键（删除多边形顶点）
+    if (manualEdit.isEditable()) {
+        if (manualEdit.handleRightClick(canvasCoords)) return;
+    }
+    
+    const mode = getCurrentDrawMode();
     if (mode === DRAW_MODE.POLYGON) {
         const handled = manualDraw.handleRightClick(e, canvasCoords, imageCoords);
         if (handled) return;
@@ -452,6 +513,12 @@ export function handleCanvasMouseMove(e) {
     const mode = getCurrentDrawMode();
     const canvasCoords = getCanvasMousePos(e);
     const imageCoords = scaleCoordsToImage(canvasCoords);
+    
+    // 编辑模式下的鼠标移动处理（拖拽 + 悬停检测）
+    if (manualEdit.handleMouseMove(canvasCoords, imageCoords)) {
+        redrawAll();
+        return;
+    }
     
     // 手动绘制模式下的处理
     if (mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.OBB) {
@@ -861,6 +928,52 @@ function drawObbPreview(obb, activeColor) {
             ctx.fill();
             ctx.stroke();
         }
+    }
+    
+    ctx.restore();
+}
+
+/**
+ * 绘制编辑控制柄（顶点拖拽点、边中点标记）
+ */
+function drawEditHandles() {
+    const handles = manualEdit.getEditHandles();
+    if (!handles) return;
+    
+    const { vertices, edgeMidpoints, annotationType, hoverType, hoverIndex, color } = handles;
+    
+    ctx.save();
+    
+    // 绘制顶点控制柄
+    vertices.forEach((v, i) => {
+        const isHovered = hoverType === 'vertex' && hoverIndex === i;
+        const radius = isHovered ? 7 : 5;
+        
+        // 白色外圈
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, radius + 2, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        
+        // 颜色内圈
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+    });
+    
+    // 绘制边中点标记（仅多边形，提示可插入顶点）
+    if (annotationType === 'polygon') {
+        edgeMidpoints.forEach((mid, i) => {
+            const isHovered = hoverType === 'edge' && hoverIndex === i;
+            const size = isHovered ? 5 : 3;
+            
+            ctx.fillStyle = isHovered ? color : 'rgba(255,255,255,0.6)';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.fillRect(mid.x - size, mid.y - size, size * 2, size * 2);
+            ctx.strokeRect(mid.x - size, mid.y - size, size * 2, size * 2);
+        });
     }
     
     ctx.restore();

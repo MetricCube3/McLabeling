@@ -590,6 +590,10 @@ def check_annotation(task_path: str, index: int, image_width: int, image_height:
                                 ys = set(round(p[1], 1) for p in pixel_coords)
                                 if len(xs) == 2 and len(ys) == 2:
                                     ann['annotationType'] = 'rectangle'
+                                else:
+                                    ann['annotationType'] = 'polygon'
+                            else:
+                                ann['annotationType'] = 'polygon'
                             annotations.append(ann)
                     annotation_data = annotations
                     break  # 找到标注文件后跳出循环

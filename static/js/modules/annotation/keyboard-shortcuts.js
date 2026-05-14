@@ -6,9 +6,10 @@
 
 import { appState } from '../../core/state.js';
 import { showToast } from '../../utils/toast.js';
-import { addNewObject } from './annotation-state.js';
+import { addNewObject, setActiveObject, getAnnotationState } from './annotation-state.js';
 import { getCurrentDrawMode, DRAW_MODE } from './draw-mode.js';
 import { cancelDrawing, isDrawing } from './manual-draw.js';
+import { cancelEdit, isDragging as isEditDragging } from './manual-edit.js';
 
 // 防止重复初始化的标志
 let isInitialized = false;
@@ -132,21 +133,30 @@ function handleKeyDown(e) {
         return;
     }
     
-    // 返回任务列表或取消绘制：ESC 键
+    // ESC 键：取消编辑 → 取消绘制 → 取消选定
     if (SHORTCUTS.BACK.includes(e.key)) {
         e.preventDefault();
         
-        // 如果正在绘制多边形，优先取消绘制
+        // 优先级0：如果正在编辑拖拽，取消编辑
+        if (isEditDragging()) {
+            cancelEdit();
+            showToast('已取消编辑', 'info');
+            return;
+        }
+        
+        // 优先级1：如果正在绘制，取消绘制
         const mode = getCurrentDrawMode();
-        if ((mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.RECTANGLE) && isDrawing()) {
+        if ((mode === DRAW_MODE.POLYGON || mode === DRAW_MODE.RECTANGLE || mode === DRAW_MODE.OBB) && isDrawing()) {
             cancelDrawing();
             showToast('已取消绘制', 'info');
             return;
         }
         
-        // 否则返回任务列表
-        if (backToListBtn && annotationUI && !annotationUI.classList.contains('hidden')) {
-            backToListBtn.click();
+        // 优先级2：如果有选定的标注对象，取消选定
+        const annotationState = getAnnotationState();
+        if (annotationState.activeObjectIndex !== -1) {
+            setActiveObject(-1);
+            return;
         }
         return;
     }
@@ -176,7 +186,7 @@ export function getShortcutsHelp() {
         { keys: 'M', description: 'SAM模式' },
         { keys: 'B', description: '矩形框模式' },
         { keys: 'P', description: '多边形模式' },
-        { keys: 'ESC', description: '取消绘制 / 返回列表' }
+        { keys: 'ESC', description: '取消编辑 / 取消绘制 / 取消选定' }
     ];
 }
 
