@@ -3,7 +3,7 @@
  * 处理已完成标注（矩形框、多边形、OBB）的顶点拖拽、边拖拽和整体移动
  */
 
-import { eventBus } from '../../core/event-bus.js';
+import { eventBus, EVENTS } from '../../core/event-bus.js';
 import { getAnnotationState, getActiveObject, updateActiveObjectMask } from './annotation-state.js';
 
 // 编辑状态
@@ -37,6 +37,13 @@ const EDGE_MIDPOINT_RADIUS = 5; // 边中点标记半径
  */
 export function init() {
     canvas = document.getElementById('point-canvas');
+    
+    // 活动对象切换时重置编辑状态和光标
+    eventBus.on(EVENTS.ANNOTATION_ACTIVE_OBJECT_CHANGED, () => {
+        editHover.type = null;
+        editHover.index = -1;
+        updateCursor(null);
+    });
 }
 
 /**
