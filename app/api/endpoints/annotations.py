@@ -215,11 +215,7 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                     os.remove(target_image_path)
                     deleted_files.append("图片文件")
 
-            # 对于抽帧图片，不删除源文件
-            if not request.overwrite_path and os.path.exists(source_frame_path) and not is_extracted_frame:
-                if source_frame_path.startswith('static/temp/'):
-                    os.remove(source_frame_path)
-                    deleted_files.append("临时文件")
+            # 保留临时文件，避免用户停留在当前帧继续标注时找不到图片
 
             message = "图像未标注，并清空已有标注缓存" if deleted_files else "图像未标注"
         else:
@@ -230,16 +226,16 @@ def save_yolo_annotation(request: SaveAnnotationRequest, db: Session = Depends(g
                     if not os.path.exists(target_image_path):
                         shutil.copy2(source_frame_path, target_image_path)
                 else:
-                    # 非抽帧图片：移动临时图片到标注目录
-                    if os.path.exists(source_frame_path):
-                        shutil.move(source_frame_path, target_image_path)
+                    # 非抽帧图片：复制临时图片到标注目录（保留源文件供继续标注）
+                    if os.path.exists(source_frame_path) and not os.path.exists(target_image_path):
+                        shutil.copy2(source_frame_path, target_image_path)
             elif request.overwrite_path and not os.path.exists(target_image_path):
                 # 覆盖模式但目标图片不存在
                 if is_extracted_frame:
                     shutil.copy2(source_frame_path, target_image_path)
                 else:
-                    if os.path.exists(source_frame_path):
-                        shutil.move(source_frame_path, target_image_path)
+                    if os.path.exists(source_frame_path) and not os.path.exists(target_image_path):
+                        shutil.copy2(source_frame_path, target_image_path)
 
             # 保存分割标注（多边形格式）
             with open(label_filepath, 'w', encoding='utf-8') as f:
