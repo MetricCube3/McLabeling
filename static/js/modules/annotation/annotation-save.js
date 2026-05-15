@@ -164,6 +164,14 @@ export async function saveAnnotations() {
                 showToast(data.message || "保存成功!", 'success');
             }
             
+            // 保存成功后，将SAM标注转为多边形类型（使其可编辑）
+            const currentState = getAnnotationState();
+            currentState.objects.forEach(obj => {
+                if (obj.annotationType === 'sam' && obj.maskData) {
+                    obj.annotationType = 'polygon';
+                }
+            });
+            
             // 触发保存成功事件
             eventBus.emit(EVENTS.ANNOTATION_SAVED, {
                 validObjects: validObjects,
