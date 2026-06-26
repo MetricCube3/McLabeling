@@ -21,6 +21,9 @@ let fullscreenLogModal = null;
 let closeFullscreenLogBtn = null;
 let resultsModal = null;
 let closeResultsBtn = null;
+let unloadLocateBtn = null;
+let refreshLocateStatusBtn = null;
+let locateModelStatusBadge = null;
 
 // 训练监控
 let trainingInterval = null;
@@ -41,17 +44,71 @@ export function init() {
     closeFullscreenLogBtn = document.getElementById('close-fullscreen-log-btn');
     resultsModal = document.getElementById('training-results-modal');
     closeResultsBtn = document.getElementById('close-results-modal-btn');
-    
+    unloadLocateBtn = document.getElementById('unload-locate-btn');
+    refreshLocateStatusBtn = document.getElementById('refresh-locate-status-btn');
+    locateModelStatusBadge = document.getElementById('locate-model-status');
+
     setupEventListeners();
+    refreshLocateStatus();
     
     // 订阅事件
     eventBus.on('model:load-ui', loadModelManagementUI);
 }
 
 /**
+ * 查询 LocateAnything 模型当前状态并更新徽标
+ */
+async function refreshLocateStatus() {
+    if (!locateModelStatusBadge) return;
+    try {
+        const response = await fetch('/api/models/locate/status');
+        const data = await response.json();
+        if (data.success && data.status === 'available') {
+            locateModelStatusBadge.textContent = `已加载 (${data.device || 'gpu'})`;
+            locateModelStatusBadge.className = 'locate-status-badge loaded';
+        } else {
+            locateModelStatusBadge.textContent = data.status === 'unloaded' ? '未加载' : '未知';
+            locateModelStatusBadge.className = 'locate-status-badge unloaded';
+        }
+    } catch {
+        locateModelStatusBadge.textContent = '查询失败';
+        locateModelStatusBadge.className = 'locate-status-badge unloaded';
+    }
+}
+
+/**
+ * 卸载 LocateAnything 模型
+ */
+async function handleUnloadLocateModel() {
+    if (unloadLocateBtn) unloadLocateBtn.disabled = true;
+    try {
+        const response = await fetch('/api/models/locate/unload', { method: 'POST' });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('LocateAnything 模型已卸载，GPU 显存已释放', 'success');
+        } else {
+            throw new Error(data.detail || '卸载失败');
+        }
+    } catch (error) {
+        showToast(`卸载失败: ${error.message}`, 'error');
+    } finally {
+        if (unloadLocateBtn) unloadLocateBtn.disabled = false;
+        refreshLocateStatus();
+    }
+}
+
+/**
  * 设置事件监听
  */
 function setupEventListeners() {
+    // LocateAnything 卸载 / 刷新状态
+    if (unloadLocateBtn) {
+        unloadLocateBtn.addEventListener('click', handleUnloadLocateModel);
+    }
+    if (refreshLocateStatusBtn) {
+        refreshLocateStatusBtn.addEventListener('click', refreshLocateStatus);
+    }
+
     // 上传模型
     if (uploadModelBtn) {
         uploadModelBtn.addEventListener('click', handleUploadModel);

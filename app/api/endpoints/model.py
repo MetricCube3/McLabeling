@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.models import Project
+from app.utils.locate_anything_worker import LocateAnythingModelManager
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -786,4 +788,209 @@ async def get_training_file(train_dir: str, filename: str):
     except Exception as e:
         logger.error(f"Failed to get training file: {e}")
         raise HTTPException(status_code=500, detail=f"获取文件失败: {str(e)}")
+
+
+# ====== LocateAnything 自动标注功能 ======
+
+def find_label_id_by_name(label_name: str, project_labels: list) -> Optional[int]:
+    """
+    通过标签名称查找对应的标签 ID
+    
+    由于 LocateAnything 的输入就是项目标签名称列表，
+    理论上返回的标签也应该在这个列表中，只需直接查找即可。
+    
+    Args:
+        label_name: 标签名称
+        project_labels: 项目标签列表 [{"id": 0, "name": "person", ...}, ...]
+    
+    Returns:
+        标签ID，如果未找到则返回 None
+    """
+    label_name_lower = label_name.lower().strip()
+    
+    # 精确匹配（不区分大小写）
+    for label in project_labels:
+        if label['name'].lower().strip() == label_name_lower:
+            return label['id']
+    
+    # 如果未找到，说明 LocateAnything 返回了我们未输入的标签（理论上不应该发生）
+    logger.warning(f"Label '{label_name}' not found in project labels. This should not happen.")
+    return None
+
+
+@router.post("/auto_annotate_locate")
+async def auto_annotate_locate(request: AutoAnnotateRequest, db: Session = Depends(get_db)):
+    """
+    使用 LocateAnything 模型进行自动标注
+    
+    LocateAnything 是多模态视觉定位模型，直接接受标签名称作为输入提示，
+    无需预训练，适合开放域和长尾类别检测。
+    
+    工作流程：
+    1. 从项目标签体系获取所有标签名称
+    2. 将标签名称作为提示词输入 LocateAnything
+    3. 解析模型输出的边界框和标签
+    4. 将结果转换为平台标注格式
+    """
+    try:
+        # 验证请求参数
+        if not request.image_path:
+            raise HTTPException(status_code=400, detail="缺少图片路径")
+        
+        if not request.project_name:
+            raise HTTPException(status_code=400, detail="缺少项目名称")
+        
+        # 获取项目标签体系
+        project_obj = db.query(Project).filter(Project.name == request.project_name).first()
+        if not project_obj:
+            raise HTTPException(status_code=404, detail=f"项目不存在: {request.project_name}")
+        
+        project_labels = project_obj.labels or []
+        if not project_labels:
+            raise HTTPException(status_code=400, detail=f"项目 '{request.project_name}' 没有配置标签")
+        
+        # 提取所有标签名称
+        label_names = [label['name'] for label in project_labels if 'name' in label]
+        if not label_names:
+            raise HTTPException(status_code=400, detail="项目标签名称为空")
+        
+        logger.info(f"LocateAnything: Detecting objects with labels: {label_names}")
+        
+        # 解析图片路径
+        image_path = request.image_path
+        
+        # 处理不同格式的路径
+        if image_path.startswith('/static/'):
+            relative_path = image_path[8:]
+            actual_image_path = os.path.join('static', relative_path)
+        elif image_path.startswith('/data/videos/'):
+            relative_path = image_path[13:]
+            actual_image_path = os.path.join('data', 'videos', relative_path)
+        elif image_path.startswith('/api/videos/frame'):
+            raise HTTPException(status_code=400, detail="无法处理API路径，请使用静态文件路径")
+        else:
+            actual_image_path = image_path.lstrip('/')
+        
+        # 验证图片文件存在
+        if not os.path.exists(actual_image_path):
+            logger.error(f"Image file not found: {actual_image_path} (original: {image_path})")
+            raise HTTPException(status_code=404, detail=f"图片文件不存在: {actual_image_path}")
+        
+        # 加载图片
+        try:
+            image = Image.open(actual_image_path).convert("RGB")
+            img_width, img_height = image.size
+            logger.info(f"Image loaded: {actual_image_path}, size: {img_width}x{img_height}")
+        except Exception as e:
+            logger.error(f"Failed to load image: {e}")
+            raise HTTPException(status_code=500, detail=f"无法加载图片: {str(e)}")
+        
+        # 获取 LocateAnything Worker
+        try:
+            worker = LocateAnythingModelManager.get_worker()
+        except Exception as e:
+            logger.error(f"Failed to load LocateAnything worker: {e}")
+            raise HTTPException(status_code=503, detail=f"LocateAnything 模型加载失败: {str(e)}")
+        
+        # 执行检测
+        try:
+            result = worker.detect(image, label_names)
+            detected_boxes = result.get("boxes", [])
+            logger.info(f"LocateAnything detected {len(detected_boxes)} objects")
+        except Exception as e:
+            logger.error(f"LocateAnything detection failed: {e}")
+            raise HTTPException(status_code=500, detail=f"LocateAnything 检测失败: {str(e)}")
+        
+        # 转换为平台标注格式
+        annotations = []
+        
+        for i, box in enumerate(detected_boxes):
+            # 查找标签对应的 ID
+            # 因为输入给 LocateAnything 的就是项目标签名称，返回的标签理论上也在其中
+            detected_label = box.get("label", "")
+            project_label_id = find_label_id_by_name(detected_label, project_labels)
+            
+            if project_label_id is None:
+                # 跳过未找到的标签（理论上不应该发生，可能是模型返回了额外的标签）
+                logger.warning(f"Skipping label not in project: {detected_label}")
+                continue
+            
+            # 归一化坐标
+            x1_norm = box["x1"] / img_width
+            y1_norm = box["y1"] / img_height
+            x2_norm = box["x2"] / img_width
+            y2_norm = box["y2"] / img_height
+            
+            # 生成矩形框的4个角点（用于兼容平台的多边形格式）
+            points = [
+                {"x": x1_norm, "y": y1_norm},  # 左上
+                {"x": x2_norm, "y": y1_norm},  # 右上
+                {"x": x2_norm, "y": y2_norm},  # 右下
+                {"x": x1_norm, "y": y2_norm}   # 左下
+            ]
+            
+            # 边界框
+            bbox = {
+                "x1": x1_norm,
+                "y1": y1_norm,
+                "x2": x2_norm,
+                "y2": y2_norm
+            }
+            
+            annotations.append({
+                "id": i,
+                "label_id": project_label_id,
+                "label_name": detected_label,
+                "points": points,
+                "bbox": bbox,
+                "confidence": 1.0,  # LocateAnything 不返回置信度
+                "type": "detection"
+            })
+        
+        return JSONResponse({
+            "success": True,
+            "annotations": annotations,
+            "model_used": "LocateAnything-3B",
+            "model_type": "detection",
+            "total_detected": len(detected_boxes),
+            "matched_count": len(annotations)
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"LocateAnything auto annotation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"自动标注失败: {str(e)}")
+
+
+@router.get("/locate/status")
+async def get_locate_status():
+    """获取 LocateAnything 模型状态（只读，不触发加载）"""
+    worker = LocateAnythingModelManager._worker
+    if worker is not None:
+        return JSONResponse({
+            "success": True,
+            "status": "available",
+            "model_name": worker.model_name,
+            "device": worker.device
+        })
+    return JSONResponse({
+        "success": True,
+        "status": "unloaded"
+    })
+
+
+@router.post("/locate/unload")
+async def unload_locate_model():
+    """卸载 LocateAnything 模型以释放显存"""
+    try:
+        LocateAnythingModelManager.unload()
+        
+        return JSONResponse({
+            "success": True,
+            "message": "LocateAnything 模型已卸载"
+        })
+    except Exception as e:
+        logger.error(f"Failed to unload LocateAnything model: {e}")
+        raise HTTPException(status_code=500, detail=f"卸载模型失败: {str(e)}")
 

@@ -13,6 +13,20 @@ numpy
 ultralytics
 pyyaml>=6.0
 werkzeug>=3.0.0
-# gpu版本
+# PyTorch - 根据系统选择对应版本
+# CPU 版本（默认）:
+# torch>=2.0.0
+# torchvision>=0.15.0
+
+# GPU 版本（推荐，显著提升性能）:
+# CUDA 11.8: pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# CUDA 12.1: pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 torch>=2.0.0
 torchvision>=0.15.0
+# LocateAnything dependencies
+transformers==4.57.1
+tokenizers==0.22.0
+accelerate==1.5.2
+timm>=1.0.11
+peft==0.12.0
+decord

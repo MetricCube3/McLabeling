@@ -11,7 +11,7 @@ env.bak/
 venv.bak/
 
 # 数据文件
-data/
+# data/
 *.db
 *.sqlite
 *.sqlite3

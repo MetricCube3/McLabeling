@@ -340,6 +340,54 @@
     background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
 }
 
+/* 自动标注弹窗内模型选择器 */
+.auto-annotate-model-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.auto-annotate-model-selector .model-selector-label {
+    font-size: 13px;
+    color: #555;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.modal-model-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.modal-model-btn {
+    padding: 5px 14px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #555;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-weight: 500;
+}
+
+.modal-model-btn:hover:not(.active) {
+    background: #f0f0f0;
+    border-color: #bbb;
+}
+
+.modal-model-btn.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
 .hidden {
     display: none !important;
 }

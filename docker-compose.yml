@@ -9,8 +9,8 @@ services:
     container_name: mclabeling_app
     restart: unless-stopped
     
-    # 共享内存大小
-    shm_size: '2gb'
+    # 共享内存大小（LocateAnything 需要更大的共享内存）
+    shm_size: '8gb'
 
     deploy:
       resources:
@@ -28,6 +28,9 @@ services:
       - MODEL_INSTANCES=1
       - LOG_LEVEL=INFO
       - TZ=Asia/Shanghai
+      # LocateAnything 配置
+      - LOCATE_ANYTHING_MODEL_PATH=data/models/LocateAnything-3B
+      - CUDA_VISIBLE_DEVICES=0
     
     # 端口映射
     ports:

@@ -394,6 +394,25 @@
                             </div>
                             
                             <div class="model-train-card">
+                                <!-- LocateAnything 显存管理 -->
+                                <div class="locate-manage-block">
+                                    <div class="locate-manage-header">
+                                        <span class="locate-manage-title">🤖 LocateAnything 显存管理</span>
+                                        <span id="locate-model-status" class="locate-status-badge unloaded">未加载</span>
+                                    </div>
+                                    <p class="form-hint">LocateAnything 占用较大显存（约 8GB），标注完成后可卸载释放 GPU 资源，下次标注时将自动重新加载。</p>
+                                    <div class="locate-manage-btns">
+                                        <button id="unload-locate-btn" class="btn-warning train-btn">
+                                            <span class="btn-icon">🗑️</span>
+                                            卸载模型
+                                        </button>
+                                        <button id="refresh-locate-status-btn" class="btn-secondary train-btn">
+                                            <span class="btn-icon">🔄</span>
+                                            刷新状态
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <h4>🚀 开始训练</h4>
                                 <p class="train-description">使用标注数据训练YOLO模型</p>
                                 
@@ -771,10 +790,18 @@
                             <li><strong>仅当前图片</strong> - 只标注当前显示的图片</li>
                         </ul>
                     </div>
+
+                    <div class="auto-annotate-model-selector">
+                        <span class="model-selector-label">标注模型</span>
+                        <div class="modal-model-btns">
+                            <button id="modal-model-yolo-btn" class="modal-model-btn active" data-model="yolo">YOLO</button>
+                            <button id="modal-model-locate-btn" class="modal-model-btn" data-model="locate">LocateAnything</button>
+                        </div>
+                    </div>
                     
                     <div class="auto-annotate-info">
                         <span class="info-icon">�</span>
-                        <span>AI模型将自动检测并标注图像中的目标对象</span>
+                        <span>模型将根据项目标签检测和匹配图像中的目标对象</span>
                     </div>
                 </div>
                 

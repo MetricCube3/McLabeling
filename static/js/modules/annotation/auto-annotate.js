@@ -20,9 +20,34 @@ let confirmModal = null;
 let batchBtn = null;
 let singleBtn = null;
 let cancelBtn = null;
+let modalModelYoloBtn = null;
+let modalModelLocateBtn = null;
 
 // 默认颜色列表
 const COLORS = ['#FF3838', '#FF9D38', '#3877FF', '#38FFFF', '#8B38FF', '#FF38F5'];
+
+// 模型类型配置
+let currentModelType = 'yolo'; // 'yolo' 或 'locate'
+
+/**
+ * 设置自动标注使用的模型类型
+ * @param {string} modelType - 'yolo' 或 'locate'
+ */
+export function setModelType(modelType) {
+    if (modelType === 'yolo' || modelType === 'locate') {
+        currentModelType = modelType;
+        console.log(`Auto-annotate model type set to: ${modelType}`);
+    } else {
+        console.error(`Invalid model type: ${modelType}`);
+    }
+}
+
+/**
+ * 获取当前模型类型
+ */
+export function getModelType() {
+    return currentModelType;
+}
 
 /**
  * 初始化自动标注模块
@@ -34,6 +59,22 @@ export function init() {
     batchBtn = document.getElementById('auto-annotate-batch-btn');
     singleBtn = document.getElementById('auto-annotate-single-btn');
     cancelBtn = document.getElementById('auto-annotate-cancel-btn');
+    modalModelYoloBtn = document.getElementById('modal-model-yolo-btn');
+    modalModelLocateBtn = document.getElementById('modal-model-locate-btn');
+
+    // 弹窗内模型选择按钮事件
+    if (modalModelYoloBtn) {
+        modalModelYoloBtn.addEventListener('click', () => {
+            currentModelType = 'yolo';
+            syncModalModelButtons();
+        });
+    }
+    if (modalModelLocateBtn) {
+        modalModelLocateBtn.addEventListener('click', () => {
+            currentModelType = 'locate';
+            syncModalModelButtons();
+        });
+    }
     
     // 设置自动标注按钮事件
     if (autoAnnotateBtn) {
@@ -106,13 +147,21 @@ export async function handleSingleAutoAnnotate() {
         if (autoAnnotateBtn) {
             autoAnnotateBtn.disabled = true;
         }
-        showToast('正在进行自动标注，请稍候...', 'info');
+        
+        // 根据模型类型显示不同的提示
+        const modelName = currentModelType === 'locate' ? 'LocateAnything' : 'YOLO';
+        showToast(`正在使用 ${modelName} 进行自动标注，请稍候...`, 'info');
         
         // 获取当前图片的路径
         const currentImagePath = new URL(displayImage.src).pathname;
         const currentProject = appState.getState('currentProject');
         
-        const response = await fetch('/api/models/auto_annotate', {
+        // 根据模型类型选择API端点
+        const apiEndpoint = currentModelType === 'locate' 
+            ? '/api/models/auto_annotate_locate' 
+            : '/api/models/auto_annotate';
+        
+        const response = await fetch(apiEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -227,12 +276,18 @@ export async function handleBatchAutoAnnotate() {
             autoAnnotateBtn.disabled = true;
         }
         
-        showToast(`开始批量自动标注 ${totalFrames} 张图片...`, 'info');
+        const modelName = currentModelType === 'locate' ? 'LocateAnything' : 'YOLO';
+        showToast(`使用 ${modelName} 开始批量自动标注 ${totalFrames} 张图片...`, 'info');
         
         let successCount = 0;
         let failCount = 0;
         const labels = appState.getState('labels') || [];
         const currentProject = appState.getState('currentProject');
+        
+        // 根据模型类型选择API端点
+        const apiEndpoint = currentModelType === 'locate' 
+            ? '/api/models/auto_annotate_locate' 
+            : '/api/models/auto_annotate';
         
         // 遍历所有帧
         for (let i = 0; i < totalFrames; i++) {
@@ -249,7 +304,7 @@ export async function handleBatchAutoAnnotate() {
                 const currentImagePath = new URL(displayImage.src).pathname;
                 
                 // 调用自动标注API
-                const response = await fetch('/api/models/auto_annotate', {
+                const response = await fetch(apiEndpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -402,11 +457,23 @@ function waitForImageLoad() {
  */
 function showConfirmModal() {
     if (confirmModal) {
+        syncModalModelButtons();
         confirmModal.classList.remove('hidden');
-        // 自动聚焦到取消按钮（更安全的默认选项）
         if (cancelBtn) {
             setTimeout(() => cancelBtn.focus(), 100);
         }
+    }
+}
+
+/**
+ * 同步弹窗内模型选择按钮的高亮状态
+ */
+function syncModalModelButtons() {
+    if (modalModelYoloBtn) {
+        modalModelYoloBtn.classList.toggle('active', currentModelType === 'yolo');
+    }
+    if (modalModelLocateBtn) {
+        modalModelLocateBtn.classList.toggle('active', currentModelType === 'locate');
     }
 }
 
@@ -423,5 +490,7 @@ export default {
     init,
     handleAutoAnnotate,
     handleSingleAutoAnnotate,
-    handleBatchAutoAnnotate
+    handleBatchAutoAnnotate,
+    setModelType,
+    getModelType
 };
