@@ -1,3 +1,3 @@
 cd McLabeling/
-# 下载LocateAnything-3B
+# 下载LocateAnything-3B，需提前下载到对应目录下
 HF_ENDPOINT=https://hf-mirror.com hf download nvidia/LocateAnything-3B --local-dir data/models/LocateAnything-3B

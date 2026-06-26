@@ -2,6 +2,20 @@
 
 ---
 
+## v0.2.1 (In progress)
+
+**新增功能**
+
+- 🤖 **LocateAnything 自动标注**：集成 NVIDIA LocateAnything-3B 大模型，无需训练，直接使用项目标签名称进行零样本目标检测与边界框标注
+- 🔀 **标注弹窗内模型切换**：点击"自动标注"按钮后，在确认弹窗中通过按钮切换 YOLO / LocateAnything 自动标注模型
+- 💾 **LocateAnything 显存管理**：模型管理页面新增显存管理区块，支持手动卸载已加载的 LocateAnything 模型以释放 GPU 资源
+
+**优化**
+
+- ⚡ **推理前图像降采样**：对高分辨率视频帧在LocateAnything推理前自动限制最大边长（1344px），防止 OOM
+
+---
+
 ## v0.2.0 (2026-06-25) 
 
 **重构**
