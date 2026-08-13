@@ -57,9 +57,12 @@
 .video-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-auto-rows: max-content;
     gap: 20px;
     padding: 20px;
     flex: 1;
+    align-content: start;
+    align-items: start;
     opacity: 1;
     will-change: opacity;
     min-height: 200px; /* 设置最小高度，避免内容加载时跳动 */
@@ -87,8 +90,8 @@
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     position: relative;
-    min-height: 330px;
-    max-height: 400px;
+    min-height: 285px;
+    max-height: 340px;
     display: flex;
     flex-direction: column;
 }
@@ -289,7 +292,7 @@
 /* 封面图 */
 .video-item-cover, .cover-placeholder {
     width: 100%;
-    height: 140px;
+    height: 110px;
     object-fit: cover;
     border-bottom: 1px solid var(--border-color);
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -319,7 +322,7 @@
 /* 任务名称正常位置（紧跟封面后） */
 .video-item-cover + .item-name,
 .cover-placeholder + .item-name {
-    padding-top: 12px;
+    padding-top: 7px;
 }
 
 /* 卡片内容区 */
@@ -338,7 +341,7 @@
 
 /* 信息行容器 */
 .item-info-row {
-    padding: 0 15px 6px;
+    padding: 0 12px 3px;
     text-align: center;
     font-size: 12px;
     color: #666;
@@ -350,8 +353,8 @@
 /* 状态切换按钮 */
 .complete-btn,
 .reopen-btn {
-    margin: 6px auto 10px;
-    padding: 6px 12px;
+    margin: 3px auto 7px;
+    padding: 5px 11px;
     border: none;
     border-radius: 5px;
     font-size: 12px;
@@ -428,8 +431,8 @@
 /* 抽帧按钮 - 绝对定位在封面图右下角 */
 .extract-frames-btn {
     position: absolute;
-    top: 116px;
-    right: 20px;
+    top: 86px;
+    right: 14px;
     background: rgba(255, 255, 255, 0.95);
     color: #333;
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -475,7 +478,7 @@
     color: var(--text-color);
     text-align: center;
     word-break: break-word;
-    padding: 8px 15px;
+    padding: 5px 12px;
     cursor: pointer;
     transition: color 0.3s ease;
 }
@@ -486,15 +489,15 @@
 
 /* 统计信息 - 横向布局 */
 .item-stats {
-    padding: 8px 15px;
-    margin: 8px 15px 12px;
+    padding: 4px 12px;
+    margin: 2px 12px 4px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
     background: transparent;
-    margin-top: auto;
+    margin-top: 2px;
 }
 
 .stat-row {
@@ -534,11 +537,11 @@
 
 /* 进度条 */
 .progress-container {
-    padding: 6px 15px 8px;
+    padding: 3px 12px 5px;
     flex-shrink: 0;
     display: flex !important;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .progress-bar {

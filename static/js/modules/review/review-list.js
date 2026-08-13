@@ -27,6 +27,10 @@ let reviewImagePaginationState = {
 // 当前正在浏览的审核任务路径。图片列表分页发生在审核会话启动之前，
 // 因此不能依赖 reviewContext.basePath（它只有点开图片后才会被设置）。
 let currentReviewBrowsePath = '';
+let layoutObserver = null;
+let adaptiveReflowTimer = null;
+const handleWindowResize = () => scheduleAdaptiveReflow();
+let isInitialized = false;
 
 // 筛选状态
 let filterState = {
@@ -48,6 +52,11 @@ let reviewImagePaginationBottom = null;
  */
 export function init() {
     console.log('[review-list] Initializing...');
+
+    if (isInitialized) {
+        scheduleAdaptiveReflow();
+        return;
+    }
     
     // 获取DOM元素
     videoList = document.getElementById('video-list');
@@ -109,6 +118,18 @@ export function init() {
     
     // 订阅事件
     eventBus.on('review:change-page', handleChangePage);
+    eventBus.on(EVENTS.SIDEBAR_TOGGLED, () => scheduleAdaptiveReflow(350));
+
+    // 容器宽度及窗口高度变化时，重新按完整行列计算分页容量。
+    if (!layoutObserver && typeof ResizeObserver !== 'undefined') {
+        const mainContentArea = document.getElementById('main-content-area');
+        if (mainContentArea) {
+            layoutObserver = new ResizeObserver(() => scheduleAdaptiveReflow());
+            layoutObserver.observe(mainContentArea);
+        }
+    }
+    window.addEventListener('resize', handleWindowResize);
+    isInitialized = true;
     
     console.log('[review-list] Initialization complete');
 }
@@ -122,6 +143,8 @@ export async function browse(path = '') {
     const currentUser = appState.getState('currentUser');
     const userRoles = appState.getState('userRoles');
     const appMode = appState.getState('appMode');
+
+    updateAdaptivePageSize(path, appMode);
     
     console.log('[review-list] Browse called');
     
@@ -752,12 +775,72 @@ export async function browse(path = '') {
         setupTaskMenuListeners();
 
         // 跨页帧导航需要使用新页返回的文件列表。
+        scheduleAdaptiveReflow();
         return data;
         
     } catch (error) {
         console.error('Browse failed:', error);
         showToast('加载列表失败: ' + error.message, 'error');
     }
+}
+
+/**
+ * 根据网格当前可用宽高计算完整的行列数。
+ * 保留原分页首项，避免窗口变化后用户突然跳到不相关的数据位置。
+ */
+function updateAdaptivePageSize(path, appMode = appState.getState('appMode')) {
+    if (!videoList || !videoList.offsetParent) return false;
+
+    const isReviewImages = appMode === 'review' && Boolean(path);
+    const paginationState = isReviewImages ? reviewImagePaginationState : taskPaginationState;
+    const isReviewTasks = appMode === 'review' && !path;
+
+    const styles = getComputedStyle(videoList);
+    const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+    const verticalPadding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+    const columnGap = parseFloat(styles.columnGap) || (isReviewImages ? 12 : 20);
+    const rowGap = parseFloat(styles.rowGap) || (isReviewImages ? 12 : 20);
+
+    const responsiveTaskWidth = window.innerWidth <= 768 ? 150 : (window.innerWidth <= 1024 ? 180 : 220);
+    const cardWidth = isReviewImages ? 120 : responsiveTaskWidth;
+    const renderedCard = videoList.querySelector(
+        isReviewImages ? '.review-image-item' : (isReviewTasks ? '.review-task-card' : '.video-item:not(.review-image-item)')
+    );
+    const cardHeight = renderedCard?.offsetHeight || (isReviewImages ? 120 : (isReviewTasks ? 200 : 285));
+    const availableWidth = Math.max(cardWidth, videoList.clientWidth - horizontalPadding);
+
+    // 给底部分页控件保留空间，只统计能够完整显示的卡片行。
+    const bottomPagination = isReviewImages ? reviewImagePaginationBottom : taskPaginationBottom;
+    const paginationHeight = bottomPagination?.classList.contains('hidden')
+        ? 0
+        : Math.max(60, bottomPagination?.offsetHeight || 0);
+    const gridTop = videoList.getBoundingClientRect().top;
+    const availableHeight = Math.max(cardHeight, window.innerHeight - gridTop - paginationHeight - verticalPadding);
+
+    const columns = Math.max(1, Math.floor((availableWidth + columnGap) / (cardWidth + columnGap)));
+    const rows = Math.max(1, Math.floor((availableHeight + rowGap) / (cardHeight + rowGap)));
+    const nextPageSize = columns * rows;
+
+    if (nextPageSize === paginationState.pageSize) return false;
+
+    const firstVisibleIndex = (paginationState.currentPage - 1) * paginationState.pageSize;
+    paginationState.pageSize = nextPageSize;
+    paginationState.currentPage = Math.floor(firstVisibleIndex / nextPageSize) + 1;
+    paginationState.totalPages = Math.max(1, Math.ceil(paginationState.totalItems / nextPageSize));
+    return true;
+}
+
+function scheduleAdaptiveReflow(delay = 120) {
+    clearTimeout(adaptiveReflowTimer);
+    adaptiveReflowTimer = setTimeout(() => {
+        const appMode = appState.getState('appMode');
+        if (appMode !== 'annotate' && appMode !== 'review') return;
+
+        const path = appMode === 'review' ? currentReviewBrowsePath : '';
+        if (updateAdaptivePageSize(path, appMode)) {
+            browse(path);
+        }
+    }, delay);
 }
 
 /**
