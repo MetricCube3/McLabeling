@@ -50,6 +50,56 @@ export function getModelType() {
 }
 
 /**
+ * 将后端推理结果统一写入标注状态。
+ * 单张与批量必须共用该转换，避免坐标、类型和颜色处理产生差异。
+ */
+function applyAutoAnnotationResults(annotations, labels) {
+    clearAnnotationState();
+
+    const annotationState = getAnnotationState();
+    const imageWidth = displayImage.naturalWidth;
+    const imageHeight = displayImage.naturalHeight;
+    const maxX = Math.max(0, imageWidth - 0.000001);
+    const maxY = Math.max(0, imageHeight - 0.000001);
+    const toImagePoint = (point) => [
+        Math.max(0, Math.min(maxX, point.x * imageWidth)),
+        Math.max(0, Math.min(maxY, point.y * imageHeight))
+    ];
+
+    (annotations || []).forEach((annotation, index) => {
+        const matchedLabel = Array.isArray(labels)
+            ? labels.find(label => label.id === annotation.label_id)
+            : null;
+        const objColor = matchedLabel?.color || COLORS[index % COLORS.length];
+        const polygon = (annotation.points || []).map(toImagePoint);
+
+        const obj = {
+            id: annotationState.nextObjectId++,
+            labelId: annotation.label_id,
+            classId: annotation.label_id,
+            color: objColor,
+            isVisible: true,
+            points: polygon.map(([x, y]) => ({ x, y })),
+            maskData: [polygon],
+            boxData: null,
+            annotationType: annotation.type === 'detection' ? 'rectangle' : 'polygon'
+        };
+
+        if (annotation.bbox) {
+            const [x1, y1] = toImagePoint({ x: annotation.bbox.x1, y: annotation.bbox.y1 });
+            const [x2, y2] = toImagePoint({ x: annotation.bbox.x2, y: annotation.bbox.y2 });
+            obj.boxData = [x1, y1, x2, y2];
+        } else if (polygon.length > 0) {
+            const xs = polygon.map(point => point[0]);
+            const ys = polygon.map(point => point[1]);
+            obj.boxData = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+        }
+
+        annotationState.objects.push(obj);
+    });
+}
+
+/**
  * 初始化自动标注模块
  */
 export function init() {
@@ -175,70 +225,16 @@ export async function handleSingleAutoAnnotate() {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            // 清空当前标注（不添加默认对象）
-            clearAnnotationState();
-            
             // 将自动标注结果添加到标注状态
             if (data.annotations && data.annotations.length > 0) {
                 const labels = appState.getState('labels') || [];
-                const annotationState = getAnnotationState();
                 const modelType = data.model_type || 'detection';
-                
-                data.annotations.forEach((annotation, index) => {
-                    // 获取标签颜色
-                    let objColor = COLORS[index % COLORS.length];
-                    if (Array.isArray(labels)) {
-                        const matchedLabel = labels.find(l => l.id === annotation.label_id);
-                        if (matchedLabel && matchedLabel.color) {
-                            objColor = matchedLabel.color;
-                        }
-                    }
-                    
-                    const obj = {
-                        id: annotationState.nextObjectId++,
-                        labelId: annotation.label_id,
-                        classId: annotation.label_id,
-                        color: objColor,
-                        isVisible: true,
-                        points: [],
-                        maskData: [[]],
-                        boxData: null
-                    };
-                    
-                    annotation.points.forEach(point => {
-                        const canvasX = point.x * displayImage.naturalWidth;
-                        const canvasY = point.y * displayImage.naturalHeight;
-                        obj.points.push({ x: canvasX, y: canvasY });
-                        obj.maskData[0].push([canvasX, canvasY]);
-                    });
-                    
-                    // 设置边界框（如果有）
-                    if (annotation.bbox) {
-                        const bbox = annotation.bbox;
-                        obj.boxData = [
-                            bbox.x1 * displayImage.naturalWidth,
-                            bbox.y1 * displayImage.naturalHeight,
-                            bbox.x2 * displayImage.naturalWidth,
-                            bbox.y2 * displayImage.naturalHeight
-                        ];
-                    } else if (obj.maskData[0].length > 0) {
-                        // 从多边形计算边界框
-                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                        obj.maskData[0].forEach(p => {
-                            minX = Math.min(minX, p[0]);
-                            minY = Math.min(minY, p[1]);
-                            maxX = Math.max(maxX, p[0]);
-                            maxY = Math.max(maxY, p[1]);
-                        });
-                        obj.boxData = [minX, minY, maxX, maxY];
-                    }
-                    
-                    annotationState.objects.push(obj);
-                });
+                applyAutoAnnotationResults(data.annotations, labels);
                 
                 const typeText = modelType === 'segmentation' ? '分割模型' : '检测模型';
                 showToast(`自动标注完成，检测到 ${data.annotations.length} 个实例 (${typeText}: ${data.model_used})`, 'success');
             } else {
+                applyAutoAnnotationResults([], []);
                 showToast('未检测到任何实例', 'info');
             }
             
@@ -318,66 +314,11 @@ export async function handleBatchAutoAnnotate() {
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
+                    // 单张和批量共用完全相同的结果转换。
+                    applyAutoAnnotationResults(data.annotations || [], labels);
+
                     // 如果有检测结果，保存标注
                     if (data.annotations && data.annotations.length > 0) {
-                        // 清空当前标注（不添加默认对象）
-                        clearAnnotationState();
-                        
-                        const annotationState = getAnnotationState();
-                        
-                        // 添加自动标注结果
-                        data.annotations.forEach((annotation, index) => {
-                            // 获取标签颜色
-                            let objColor = COLORS[index % COLORS.length];
-                            if (Array.isArray(labels)) {
-                                const matchedLabel = labels.find(l => l.id === annotation.label_id);
-                                if (matchedLabel && matchedLabel.color) {
-                                    objColor = matchedLabel.color;
-                                }
-                            }
-                            
-                            const obj = {
-                                id: annotationState.nextObjectId++,
-                                labelId: annotation.label_id,
-                                classId: annotation.label_id,
-                                color: objColor,
-                                isVisible: true,
-                                points: [],
-                                maskData: [[]],
-                                boxData: null
-                            };
-                            
-                            annotation.points.forEach(point => {
-                                const canvasX = point.x * displayImage.naturalWidth;
-                                const canvasY = point.y * displayImage.naturalHeight;
-                                obj.points.push({ x: canvasX, y: canvasY });
-                                obj.maskData[0].push([canvasX, canvasY]);
-                            });
-                            
-                            // 设置边界框（如果有）
-                            if (annotation.bbox) {
-                                const bbox = annotation.bbox;
-                                obj.boxData = [
-                                    bbox.x1 * displayImage.naturalWidth,
-                                    bbox.y1 * displayImage.naturalHeight,
-                                    bbox.x2 * displayImage.naturalWidth,
-                                    bbox.y2 * displayImage.naturalHeight
-                                ];
-                            } else if (obj.maskData[0].length > 0) {
-                                // 从多边形计算边界框
-                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                                obj.maskData[0].forEach(p => {
-                                    minX = Math.min(minX, p[0]);
-                                    minY = Math.min(minY, p[1]);
-                                    maxX = Math.max(maxX, p[0]);
-                                    maxY = Math.max(maxY, p[1]);
-                                });
-                                obj.boxData = [minX, minY, maxX, maxY];
-                            }
-                            
-                            annotationState.objects.push(obj);
-                        });
-                        
                         // 保存标注（使用静默保存，避免UI干扰）
                         try {
                             const saveResult = await saveAnnotationsSilent();
@@ -390,8 +331,9 @@ export async function handleBatchAutoAnnotate() {
                             failCount++;
                         }
                     } else {
-                        console.log(`Frame ${i}: No detections, skipping`);
-                        // 没有检测到实例，不算失败，也不算成功
+                        // 零检测也必须保存空结果，以清除该图片已有标注。
+                        await saveAnnotationsSilent();
+                        console.log(`Frame ${i}: No detections, cleared existing annotations`);
                     }
                 } else {
                     console.error(`Frame ${i}: Auto-annotate API failed:`, data);
