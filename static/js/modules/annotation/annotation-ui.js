@@ -144,7 +144,8 @@ async function handleTaskSelection(taskData) {
         await selectVideo(
             taskData.path,
             taskData.totalFrames || 0,
-            taskData.type || 'image'
+            taskData.type || 'image',
+            taskData.project || null
         );
     } catch (error) {
         console.error('[annotation-ui] Failed to load task:', error);

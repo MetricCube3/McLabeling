@@ -420,7 +420,7 @@ function makeFrameCounterEditable() {
  * 选择视频/任务
  * 从 app.js:3503 迁移
  */
-export async function selectVideo(videoPath, initialTotalFrames, taskType = 'video') {
+export async function selectVideo(videoPath, initialTotalFrames, taskType = 'video', taskProject = null) {
     const currentUser = appState.getState('currentUser');
     
     // 保存当前任务的间隔帧数设置
@@ -451,20 +451,17 @@ export async function selectVideo(videoPath, initialTotalFrames, taskType = 'vid
     totalFrames = initialTotalFrames || 0;
     
     try {
-        // 从任务列表中获取项目信息
-        let taskProject = null;
-        const taskListResponse = await fetch(`/api/browse?user=${currentUser}`);
-        const taskListData = await taskListResponse.json();
-        
-        if (taskListResponse.ok) {
-            const allTasks = [...(taskListData.files || []), ...(taskListData.directories || [])];
-            const currentTask = allTasks.find(task => task.path === videoPath);
-            if (currentTask && currentTask.project) {
-                taskProject = currentTask.project;
-                appState.setState('currentProject', taskProject);
-                eventBus.emit(EVENTS.PROJECT_SELECTED, taskProject);
-            }
+        // 优先使用任务卡片直接传递的项目，避免从分页任务列表反查失败后
+        // 沿用上一个项目的标签。旧入口未传项目时，路径首段作为兜底。
+        const resolvedProject = taskProject || (videoPath.includes('/') ? videoPath.split('/')[0] : null);
+        appState.setState('currentProject', resolvedProject);
+        appState.setState('labels', []);
+
+        if (!resolvedProject) {
+            throw new Error('无法确定任务所属项目');
         }
+
+        eventBus.emit(EVENTS.PROJECT_SELECTED, resolvedProject);
         
         // 加载项目标签
         await loadLabels();

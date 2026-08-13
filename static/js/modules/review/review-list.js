@@ -399,7 +399,8 @@ export async function browse(path = '') {
                             path: video.path,
                             name: video.name,
                             totalFrames: totalImages,
-                            type: video.type
+                            type: video.type,
+                            project: video.project
                         });
                     };
                     
@@ -411,7 +412,7 @@ export async function browse(path = '') {
                     if (extractBtn) {
                         extractBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            showFrameExtractionModal(video.path);
+                            showFrameExtractionModal(video.path, video.project);
                         });
                     }
                     
@@ -566,7 +567,8 @@ export async function browse(path = '') {
                                 path: video.path,
                                 name: video.name,
                                 totalFrames: taskTotalImages,
-                                type: isVideo ? 'video' : 'image'
+                                type: isVideo ? 'video' : 'image',
+                                project: video.project
                             });
                         };
                         
@@ -577,7 +579,7 @@ export async function browse(path = '') {
                         if (extractBtn) {
                             extractBtn.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                showFrameExtractionModal(video.path);
+                                showFrameExtractionModal(video.path, video.project);
                             });
                         }
                         
@@ -1298,10 +1300,12 @@ function showExtractRequiredNotice() {
  * 显示抽帧模态框
  */
 let currentExtractionVideoPath = null;
+let currentExtractionProject = null;
 let frameExtractionModal = null;
 
-async function showFrameExtractionModal(videoPath) {
+async function showFrameExtractionModal(videoPath, project = null) {
     currentExtractionVideoPath = videoPath;
+    currentExtractionProject = project || (videoPath.includes('/') ? videoPath.split('/')[0] : null);
     const currentUser = appState.getState('currentUser');
     
     try {
@@ -1609,7 +1613,8 @@ function showExtractionResult(result) {
                 path: currentExtractionVideoPath,
                 name: currentExtractionVideoPath.split('/').pop(),
                 totalFrames: result.extracted_count,
-                type: 'video'
+                type: 'video',
+                project: currentExtractionProject
             });
         }, 300);
     });
