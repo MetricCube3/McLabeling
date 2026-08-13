@@ -13,6 +13,7 @@ import { showConfirm } from '../../utils/modal.js';
 let uploadModelBtn = null;
 let modelUploadInput = null;
 let modelNameInput = null;
+let modelProjectSelect = null;
 let startTrainBtn = null;
 let stopTrainBtn = null;
 let trainProjectSelect = null;
@@ -36,6 +37,7 @@ export function init() {
     uploadModelBtn = document.getElementById('upload-model-btn');
     modelUploadInput = document.getElementById('model-upload-input');
     modelNameInput = document.getElementById('model-name-input');
+    modelProjectSelect = document.getElementById('model-project-select');
     startTrainBtn = document.getElementById('start-train-btn');
     stopTrainBtn = document.getElementById('stop-train-btn');
     trainProjectSelect = document.getElementById('train-project-select');
@@ -183,6 +185,9 @@ async function handleUploadModel() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('model_name', modelName);
+    if (modelProjectSelect?.value) {
+        formData.append('project_name', modelProjectSelect.value);
+    }
     
     const statusDiv = document.getElementById('model-upload-status');
     if (statusDiv) statusDiv.textContent = '正在上传...';
@@ -201,6 +206,7 @@ async function handleUploadModel() {
             if (statusDiv) statusDiv.textContent = '上传完成';
             if (modelNameInput) modelNameInput.value = '';
             if (modelUploadInput) modelUploadInput.value = '';
+            if (modelProjectSelect) modelProjectSelect.value = '';
             
             loadUploadedModels();
             loadModelsToTrainSelect();
@@ -348,12 +354,25 @@ async function loadUploadedModels() {
             
             if (!modelsList) return;
             
-            if (modelsData.models.length === 0) {
-                modelsList.innerHTML = '<p class="empty-message">暂无模型</p>';
-                return;
-            }
-            
-            modelsList.innerHTML = modelsData.models.map(model => {
+            const groupedModels = modelsData.models.reduce((groups, model) => {
+                const group = model.group || '基础模型';
+                (groups[group] ||= []).push(model);
+                return groups;
+            }, {});
+            const groupNames = [...new Set([...(modelsData.groups || ['基础模型']), ...Object.keys(groupedModels)])].sort((a, b) => {
+                if (a === '基础模型') return -1;
+                if (b === '基础模型') return 1;
+                return a.localeCompare(b, 'zh-CN');
+            });
+
+            modelsList.innerHTML = groupNames.map(groupName => `
+                <section class="model-group">
+                    <div class="model-group-header">
+                        <h5>${groupName === '基础模型' ? '🧱' : '📁'} ${groupName}</h5>
+                        <span>${(groupedModels[groupName] || []).length} 个模型</span>
+                    </div>
+                    <div class="model-group-grid">
+                    ${(groupedModels[groupName] || []).map(model => {
                 const isActive = model.name === activeModel;
                 return `
                     <div class="model-item ${isActive ? 'active-model-item' : ''}" data-model-info='${JSON.stringify(model).replace(/'/g, "&apos;")}'>
@@ -368,7 +387,10 @@ async function loadUploadedModels() {
                         </div>
                     </div>
                 `;
-            }).join('');
+                    }).join('')}
+                    </div>
+                </section>
+            `).join('');
             
             // 绑定模型操作事件
             bindModelActions(modelsList, modelsData.models);
@@ -487,9 +509,16 @@ async function loadModelsToTrainSelect() {
                 return;
             }
             
+            const groupedModels = data.models.reduce((groups, model) => {
+                const group = model.group || '基础模型';
+                (groups[group] ||= []).push(model);
+                return groups;
+            }, {});
             baseModelSelect.innerHTML = '<option value="">请选择模型</option>' +
-                data.models.map(model => 
-                    `<option value="${model.name}">${model.name}</option>`
+                Object.entries(groupedModels).map(([group, models]) =>
+                    `<optgroup label="${group}">${models.map(model =>
+                        `<option value="${model.name}">${model.name}</option>`
+                    ).join('')}</optgroup>`
                 ).join('');
         }
     } catch (error) {
@@ -777,6 +806,12 @@ export async function loadModelManagementUI() {
                 projectNames.map(projectName => 
                     `<option value="${projectName}">${projectName}</option>`
                 ).join('');
+            if (modelProjectSelect) {
+                modelProjectSelect.innerHTML = '<option value="">基础模型</option>' +
+                    projectNames.map(projectName =>
+                        `<option value="${projectName}">${projectName}</option>`
+                    ).join('');
+            }
         }
     } catch (error) {
         console.error('Failed to load projects:', error);

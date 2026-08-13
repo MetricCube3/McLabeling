@@ -360,6 +360,14 @@
                                     <label for="model-name-input">模型名称：</label>
                                     <input type="text" id="model-name-input" class="form-input" placeholder="例如：yolov8n-seg">
                                 </div>
+
+                                <div class="form-group">
+                                    <label for="model-project-select">模型分组：</label>
+                                    <select id="model-project-select" class="form-select">
+                                        <option value="">基础模型</option>
+                                    </select>
+                                    <p class="form-hint">默认保存到基础模型，也可以选择归属项目。</p>
+                                </div>
                                 
                                 <div class="upload-controls">
                                     <input type="file" id="model-upload-input" accept=".pt" class="file-input">

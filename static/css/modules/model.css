@@ -94,6 +94,39 @@
 
 /* 模型列表 - 网格布局 */
 .models-list {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.model-group {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.model-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.model-group-header h5 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.model-group-header span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.model-group-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 15px;

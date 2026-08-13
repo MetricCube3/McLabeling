@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import Project
+from app.models.models import Project, ModelRecord, TrainingRun
 from app.utils.locate_anything_worker import LocateAnythingModelManager
 from PIL import Image
 
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/api/models", tags=["models"])
 # 模型存储路径
 MODELS_DIR = "data/models"
 TRAIN_DIR = "data/training"
+BASE_MODEL_GROUP = "基础模型"
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(TRAIN_DIR, exist_ok=True)
 
@@ -48,6 +49,22 @@ training_stop_event = threading.Event()
 
 # 全局变量：当前应用的模型
 active_model = None
+
+
+def upsert_model_record(db, filename, project=None, source_type='uploaded',
+                        display_name=None, original_name=None, file_size=0):
+    record = db.query(ModelRecord).filter(ModelRecord.filename == filename).first()
+    if record is None:
+        record = ModelRecord(filename=filename)
+        db.add(record)
+    record.display_name = display_name or filename
+    record.original_name = original_name
+    record.project_id = project.id if project else None
+    record.project_name = project.name if project else None
+    record.source_type = source_type
+    record.file_size = file_size
+    db.commit()
+    return record
 
 
 class TrainConfig(BaseModel):
@@ -68,7 +85,9 @@ class AutoAnnotateRequest(BaseModel):
 @router.post("/upload")
 async def upload_model(
         file: UploadFile = File(...),
-        model_name: str = Form(...)
+        model_name: str = Form(...),
+        project_name: Optional[str] = Form(None),
+        db: Session = Depends(get_db)
 ):
     """上传YOLO模型文件"""
     try:
@@ -77,6 +96,10 @@ async def upload_model(
             raise HTTPException(status_code=400, detail="只支持.pt格式的模型文件")
 
         # 创建安全的文件名
+        project = db.query(Project).filter(Project.name == project_name).first() if project_name else None
+        if project_name and not project:
+            raise HTTPException(status_code=404, detail="所选项目不存在")
+
         safe_name = f"{model_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
         file_path = os.path.join(MODELS_DIR, safe_name)
 
@@ -85,6 +108,10 @@ async def upload_model(
             shutil.copyfileobj(file.file, buffer)
 
         file_size = os.path.getsize(file_path)
+        upsert_model_record(
+            db, safe_name, project=project, source_type='uploaded',
+            display_name=model_name, original_name=file.filename, file_size=file_size
+        )
 
         logger.info(f"Model uploaded: {safe_name}, size: {file_size} bytes")
 
@@ -95,34 +122,47 @@ async def upload_model(
                 "name": safe_name,
                 "original_name": file.filename,
                 "size": file_size,
-                "upload_time": datetime.now().isoformat()
+                "upload_time": datetime.now().isoformat(),
+                "group": project_name or BASE_MODEL_GROUP
             }
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to upload model: {e}")
         raise HTTPException(status_code=500, detail=f"模型上传失败: {str(e)}")
 
 
 @router.get("/list")
-async def list_models():
+async def list_models(db: Session = Depends(get_db)):
     """获取已上传的模型列表"""
     try:
         models = []
+        records = {record.filename: record for record in db.query(ModelRecord).all()}
         if os.path.exists(MODELS_DIR):
             for filename in os.listdir(MODELS_DIR):
                 if filename.endswith('.pt'):
                     file_path = os.path.join(MODELS_DIR, filename)
                     file_stat = os.stat(file_path)
+                    record = records.get(filename)
+                    if record is None:
+                        # 兼容已有模型文件：首次列表查询时自动登记为基础模型。
+                        record = upsert_model_record(db, filename, file_size=file_stat.st_size)
                     models.append({
                         "name": filename,
                         "size": file_stat.st_size,
-                        "modified_time": datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+                        "modified_time": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+                        "group": record.project_name or BASE_MODEL_GROUP,
+                        "source_type": record.source_type
                     })
 
         return JSONResponse({
             "success": True,
-            "models": sorted(models, key=lambda x: x['modified_time'], reverse=True)
+            "models": sorted(models, key=lambda x: x['modified_time'], reverse=True),
+            "groups": [BASE_MODEL_GROUP] + [
+                project.name for project in db.query(Project).order_by(Project.name).all()
+            ]
         })
 
     except Exception as e:
@@ -131,7 +171,7 @@ async def list_models():
 
 
 @router.delete("/{model_name}")
-async def delete_model(model_name: str):
+async def delete_model(model_name: str, db: Session = Depends(get_db)):
     """删除模型文件"""
     try:
         file_path = os.path.join(MODELS_DIR, model_name)
@@ -140,6 +180,10 @@ async def delete_model(model_name: str):
             raise HTTPException(status_code=404, detail="模型文件不存在")
 
         os.remove(file_path)
+        record = db.query(ModelRecord).filter(ModelRecord.filename == model_name).first()
+        if record:
+            db.delete(record)
+            db.commit()
 
         logger.info(f"Model deleted: {model_name}")
 
@@ -287,6 +331,15 @@ def run_training(config: TrainConfig):
         output_dir = os.path.join(TRAIN_DIR, f"{config.project_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         output_dir = os.path.abspath(output_dir)  # 转换为绝对路径
         os.makedirs(output_dir, exist_ok=True)
+        project = db.query(Project).filter(Project.name == config.project_name).first()
+        training_run = db.query(TrainingRun).filter(TrainingRun.output_dir == output_dir).first()
+        if training_run is None:
+            training_run = TrainingRun(output_dir=output_dir, project_name=config.project_name)
+            db.add(training_run)
+        training_run.project_id = project.id if project else None
+        training_run.project_name = config.project_name
+        training_run.base_model = config.base_model
+        db.commit()
 
         # 自动准备训练数据集（根据任务类型选择不同的标签目录）
         training_status["log"].append(f"正在准备训练数据集（任务类型: {config.task_type}）...")
@@ -492,15 +545,24 @@ def stop_training():
 
 
 @router.get("/train/history")
-async def get_train_history():
+async def get_train_history(db: Session = Depends(get_db)):
     """获取训练历史记录"""
     try:
         history = []
+        training_runs = {
+            os.path.normcase(os.path.abspath(run.output_dir)): run
+            for run in db.query(TrainingRun).all()
+        }
 
         if os.path.exists(TRAIN_DIR):
             for dir_name in os.listdir(TRAIN_DIR):
                 dir_path = os.path.join(TRAIN_DIR, dir_name)
                 if os.path.isdir(dir_path):
+                    project_name = dir_name.rsplit('_', 2)[0]
+                    training_run = training_runs.get(os.path.normcase(os.path.abspath(dir_path)))
+                    if training_run:
+                        project_name = training_run.project_name
+
                     # 查找训练结果
                     train_path = os.path.join(dir_path, "train")
                     weights_path = os.path.join(train_path, "weights", "best.pt")
@@ -514,6 +576,7 @@ async def get_train_history():
                             "size": os.path.getsize(weights_path) if has_best_model else 0,
                             "path": weights_path if has_best_model else "",
                             "train_path": train_path,
+                            "project_name": project_name,
                             "has_best_model": has_best_model
                         })
 
@@ -779,7 +842,7 @@ async def auto_annotate(request: AutoAnnotateRequest, db: Session = Depends(get_
 
 
 @router.post("/train/save-model")
-async def save_trained_model(train_path: str = Form(...)):
+async def save_trained_model(train_path: str = Form(...), db: Session = Depends(get_db)):
     """从训练结果中保存best.pt到模型列表"""
     try:
         # 找到best.pt
@@ -789,19 +852,31 @@ async def save_trained_model(train_path: str = Form(...)):
 
         # 生成新模型名称
         train_name = os.path.basename(os.path.dirname(train_path))
+        project_name = train_name.rsplit('_', 2)[0]
+        output_dir = os.path.abspath(os.path.dirname(train_path))
+        training_run = db.query(TrainingRun).filter(TrainingRun.output_dir == output_dir).first()
+        if training_run:
+            project_name = training_run.project_name
+        project = db.query(Project).filter(Project.name == project_name).first()
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         new_model_name = f"trained_{train_name}_{timestamp}.pt"
         new_model_path = os.path.join(MODELS_DIR, new_model_name)
 
         # 复制模型文件
         shutil.copy2(best_model_path, new_model_path)
+        upsert_model_record(
+            db, new_model_name, project=project, source_type='trained',
+            display_name=f"trained_{train_name}", original_name='best.pt',
+            file_size=os.path.getsize(new_model_path)
+        )
 
         logger.info(f"Trained model saved: {new_model_name}")
 
         return JSONResponse({
             "success": True,
             "message": f"模型已保存: {new_model_name}",
-            "model_name": new_model_name
+            "model_name": new_model_name,
+            "group": project_name
         })
 
     except Exception as e:

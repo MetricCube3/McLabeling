@@ -43,6 +43,39 @@ class Project(Base):
     review_tasks = relationship("ReviewTask", back_populates="project_rel")
 
 
+class ModelRecord(Base):
+    """YOLO模型文件及其项目归属。"""
+    __tablename__ = 'model_records'
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String(255), unique=True, index=True, nullable=False)
+    display_name = Column(String(255), nullable=True)
+    original_name = Column(String(255), nullable=True)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=True)
+    project_name = Column(String(100), nullable=True)
+    source_type = Column(String(20), nullable=False, default='uploaded')
+    file_size = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project_rel = relationship("Project", foreign_keys=[project_id])
+
+
+class TrainingRun(Base):
+    """模型训练任务与项目的持久化关联。"""
+    __tablename__ = 'training_runs'
+
+    id = Column(Integer, primary_key=True, index=True)
+    output_dir = Column(String(1000), unique=True, index=True, nullable=False)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=True)
+    project_name = Column(String(100), nullable=False)
+    base_model = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project_rel = relationship("Project", foreign_keys=[project_id])
+
+
 class VideoPool(Base):
     """视频池表 - 存储所有可分配的视频/图片任务"""
     __tablename__ = 'video_pool'
