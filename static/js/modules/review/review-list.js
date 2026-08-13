@@ -24,6 +24,10 @@ let reviewImagePaginationState = {
     totalPages: 1
 };
 
+// 当前正在浏览的审核任务路径。图片列表分页发生在审核会话启动之前，
+// 因此不能依赖 reviewContext.basePath（它只有点开图片后才会被设置）。
+let currentReviewBrowsePath = '';
+
 // 筛选状态
 let filterState = {
     status: 'all',
@@ -166,6 +170,10 @@ export async function browse(path = '') {
             throw new Error(errData.error || 'Failed to browse directory');
         }
         const data = await response.json();
+
+        if (appMode === 'review') {
+            currentReviewBrowsePath = path;
+        }
         
         // 更新分页状态
         if (appMode === 'review' && path) {
@@ -742,6 +750,9 @@ export async function browse(path = '') {
         
         // 绑定任务菜单按钮事件（管理员功能）
         setupTaskMenuListeners();
+
+        // 跨页帧导航需要使用新页返回的文件列表。
+        return data;
         
     } catch (error) {
         console.error('Browse failed:', error);
@@ -853,7 +864,7 @@ function updateReviewImagePaginationControls() {
         container.innerHTML = paginationHTML;
         
         // 添加事件监听
-        const basePath = appState.getState('reviewContext')?.basePath || '';
+        const basePath = currentReviewBrowsePath;
         
         container.querySelector('.first-page').addEventListener('click', () => {
             reviewImagePaginationState.currentPage = 1;
@@ -1071,16 +1082,14 @@ function showFilterControls() {
 /**
  * 处理分页切换请求
  */
-function handleChangePage({ page, index }) {
+async function handleChangePage({ page, index }) {
     const basePath = appState.getState('reviewContext')?.basePath || '';
     reviewImagePaginationState.currentPage = page;
-    
-    browse(basePath).then(() => {
-        // 分页加载完成后，启动审核会话
-        setTimeout(() => {
-            startReviewSession(index, basePath, null, reviewImagePaginationState);
-        }, 100);
-    });
+
+    const data = await browse(basePath);
+    if (data?.files) {
+        startReviewSession(index, basePath, data.files, reviewImagePaginationState);
+    }
 }
 
 /**
