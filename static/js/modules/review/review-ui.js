@@ -11,6 +11,7 @@ import { initAnnotationState, loadAnnotationFromData, setActiveObject, addNewObj
 import { redrawAll, setImageDimensions } from '../annotation/annotation-canvas.js';
 import { renderSidebar } from '../annotation/annotation-sidebar.js';
 import { setEditingFilePath } from '../annotation/annotation-frame.js';
+import { loadLabels } from '../label/label-manager.js';
 import { init as initReviewList, browse } from './review-list.js';
 
 // 防止重复初始化的标志
@@ -203,8 +204,16 @@ export async function loadReviewedImage() {
         
         // 设置当前项目
         if (data.project) {
+            const previousProject = appState.getState('currentProject');
+            const currentLabels = appState.getState('labels');
             appState.setState('currentProject', data.project);
             eventBus.emit(EVENTS.PROJECT_SELECTED, data.project);
+
+            // 审核模式可能是登录后首次打开的标注界面，此时标签尚未加载。
+            // 必须等待项目标签就绪后再创建标注对象和渲染标签下拉框。
+            if (previousProject !== data.project || !Array.isArray(currentLabels) || currentLabels.length === 0) {
+                await loadLabels();
+            }
         }
         
         // 暂存标注数据，等图片加载后再处理
