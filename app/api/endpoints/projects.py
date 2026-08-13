@@ -197,12 +197,20 @@ def manage_project_labels(
             raise HTTPException(status_code=404, detail="标签不存在")
 
     elif request.action == 'delete':
-        # 删除标签
+        # 只能从末尾依次删除，避免中间 ID 空缺导致已有标注类别错位。
         label_id = request.label.get('id')
-        original_count = len(labels)
-        labels = [label for label in labels if label['id'] != label_id]
-        if len(labels) == original_count:
+        existing_ids = [label.get('id') for label in labels]
+        if label_id not in existing_ids:
             raise HTTPException(status_code=404, detail="标签不存在")
+
+        last_label_id = max(existing_ids)
+        if label_id != last_label_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"只能从最后一个标签开始删除，请先删除 ID 为 {last_label_id} 的标签"
+            )
+
+        labels = [label for label in labels if label['id'] != label_id]
         logger.info(f"Deleted label id={label_id} from project '{project_name}'")
 
     else:

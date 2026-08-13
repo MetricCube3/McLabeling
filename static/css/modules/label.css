@@ -277,6 +277,18 @@
     background: #ff4d4f;
 }
 
+.label-action-btn.delete:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.label-action-btn.delete:disabled:hover {
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
 /* 管理员操作区域 */
 .label-admin-section {
     display: flex;

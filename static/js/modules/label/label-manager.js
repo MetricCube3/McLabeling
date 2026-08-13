@@ -487,9 +487,16 @@ export async function saveLabelEdit() {
 export async function deleteLabel(id) {
     const currentUser = appState.getState('currentUser');
     const currentProject = appState.getState('currentProject');
+    const labels = appState.getState('labels') || [];
     
     if (!currentProject) {
         showToast('请先选择项目', 'warning');
+        return;
+    }
+
+    const lastLabelId = Math.max(...labels.map(label => Number(label.id)));
+    if (Number(id) !== lastLabelId) {
+        showToast(`只能从最后一个标签开始删除，请先删除 ID 为 ${lastLabelId} 的标签`, 'warning');
         return;
     }
     
@@ -538,7 +545,7 @@ export async function deleteLabel(id) {
             // 触发标签删除事件
             eventBus.emit(EVENTS.LABEL_DELETED, { id, project: currentProject });
         } else {
-            throw new Error(data.error || '删除标签失败');
+            throw new Error(data.detail || data.error || '删除标签失败');
         }
     } catch (error) {
         showToast(`删除标签失败: ${error.message}`, 'error');
@@ -633,8 +640,11 @@ export function renderLabelList(labels) {
     const tbody = document.createElement('tbody');
     
     // 渲染现有标签行
+    const lastLabelId = labels.length > 0
+        ? Math.max(...labels.map(label => Number(label.id)))
+        : null;
     labels.forEach(label => {
-        const row = createLabelRow(label, isAdmin);
+        const row = createLabelRow(label, isAdmin, Number(label.id) === lastLabelId);
         tbody.appendChild(row);
     });
     
@@ -662,7 +672,7 @@ export function renderLabelList(labels) {
 /**
  * 创建标签行
  */
-function createLabelRow(label, isAdmin) {
+function createLabelRow(label, isAdmin, isLastLabel = false) {
     const row = document.createElement('tr');
     row.className = 'label-row';
     row.dataset.id = label.id;
@@ -692,7 +702,7 @@ function createLabelRow(label, isAdmin) {
                     <button class="label-action-btn edit-inline" title="编辑">
                         <span class="btn-icon">✏️</span>
                     </button>
-                    <button class="label-action-btn delete" title="删除">
+                    <button class="label-action-btn delete" title="${isLastLabel ? '删除' : '只能从最后一个标签开始删除'}" ${isLastLabel ? '' : 'disabled'}>
                         <span class="btn-icon">🗑️</span>
                     </button>
                 </div>
@@ -748,9 +758,11 @@ function createLabelRow(label, isAdmin) {
         });
         
         // 删除标签
-        deleteBtn.addEventListener('click', () => {
-            deleteLabel(label.id);
-        });
+        if (isLastLabel) {
+            deleteBtn.addEventListener('click', () => {
+                deleteLabel(label.id);
+            });
+        }
     }
     
     return row;
