@@ -9,6 +9,8 @@ import subprocess
 import logging
 import random
 import yaml
+import signal
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -40,6 +42,9 @@ training_status = {
     "progress": 0,
     "log": []
 }
+training_process = None
+training_process_lock = threading.RLock()
+training_stop_event = threading.Event()
 
 # 全局变量：当前应用的模型
 active_model = None
@@ -272,18 +277,12 @@ def run_training(config: TrainConfig):
     """
     from app.core.database import SessionLocal
 
-    global training_status
+    global training_status, training_process
 
     # 在后台任务中创建独立的数据库会话
     db = SessionLocal()
 
     try:
-        training_status["is_training"] = True
-        training_status["current_epoch"] = 0
-        training_status["total_epochs"] = config.epochs
-        training_status["progress"] = 0
-        training_status["log"] = []
-
         # 训练输出目录（使用绝对路径）
         output_dir = os.path.join(TRAIN_DIR, f"{config.project_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         output_dir = os.path.abspath(output_dir)  # 转换为绝对路径
@@ -295,7 +294,10 @@ def run_training(config: TrainConfig):
         training_status["log"].append(message)
 
         if data_yaml_path is None:
-            training_status["is_training"] = False
+            return
+
+        if training_stop_event.is_set():
+            training_status["log"].append("训练已在数据准备完成后停止")
             return
 
         # 准备模型路径（使用绝对路径）
@@ -328,12 +330,24 @@ def run_training(config: TrainConfig):
 
         training_status["log"].append(f"开始训练: {' '.join(cmd)}")
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True
-        )
+        popen_kwargs = {
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.STDOUT,
+            "universal_newlines": True
+        }
+        if os.name == "nt":
+            # 独立进程组便于连同 YOLO 的 DataLoader 子进程一起停止。
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        else:
+            popen_kwargs["start_new_session"] = True
+
+        process = subprocess.Popen(cmd, **popen_kwargs)
+        with training_process_lock:
+            training_process = process
+
+        # 停止请求可能恰好发生在创建进程之前。
+        if training_stop_event.is_set():
+            terminate_training_process(process)
 
         # 读取训练输出
         for line in process.stdout:
@@ -357,7 +371,9 @@ def run_training(config: TrainConfig):
 
         process.wait()
 
-        if process.returncode == 0:
+        if training_stop_event.is_set():
+            training_status["log"].append("训练已停止")
+        elif process.returncode == 0:
             training_status["log"].append("训练完成！")
             training_status["progress"] = 100
         else:
@@ -369,8 +385,44 @@ def run_training(config: TrainConfig):
         training_status["log"].append(f"训练错误: {str(e)}")
 
     finally:
+        with training_process_lock:
+            if training_process is locals().get("process"):
+                training_process = None
         training_status["is_training"] = False
         db.close()  # 关闭数据库会话
+
+
+def terminate_training_process(process):
+    """终止训练主进程及其创建的所有子进程。"""
+    if process is None or process.poll() is not None:
+        return
+
+    try:
+        if os.name == "nt":
+            # terminate() 只会结束 yolo 主进程，taskkill /T 才会处理 workers 子进程。
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                check=False
+            )
+        else:
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            if os.name == "nt":
+                process.kill()
+            else:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            process.wait(timeout=5)
+    except (ProcessLookupError, OSError, subprocess.SubprocessError) as exc:
+        logger.warning(f"Failed to terminate training process tree cleanly: {exc}")
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
 
 
 @router.post("/train")
@@ -382,6 +434,14 @@ async def start_training(config: TrainConfig, background_tasks: BackgroundTasks)
         raise HTTPException(status_code=400, detail="当前已有训练任务在进行中")
 
     try:
+        # 在加入后台队列前立即占用训练状态，避免重复启动以及停止请求竞态。
+        training_stop_event.clear()
+        training_status["is_training"] = True
+        training_status["current_epoch"] = 0
+        training_status["total_epochs"] = config.epochs
+        training_status["progress"] = 0
+        training_status["log"] = []
+
         # 在后台启动训练（会话在后台任务中创建）
         background_tasks.add_task(run_training, config)
 
@@ -391,6 +451,7 @@ async def start_training(config: TrainConfig, background_tasks: BackgroundTasks)
         })
 
     except Exception as e:
+        training_status["is_training"] = False
         logger.error(f"Failed to start training: {e}")
         raise HTTPException(status_code=500, detail=f"启动训练失败: {str(e)}")
 
@@ -405,7 +466,7 @@ async def get_training_status():
 
 
 @router.post("/train/stop")
-async def stop_training():
+def stop_training():
     """停止训练任务"""
     global training_status
 
@@ -413,7 +474,16 @@ async def stop_training():
         raise HTTPException(status_code=400, detail="当前没有训练任务在进行中")
 
     training_status["log"].append("用户请求停止训练")
-    training_status["is_training"] = False
+    training_stop_event.set()
+
+    with training_process_lock:
+        process = training_process
+
+    if process is not None:
+        terminate_training_process(process)
+
+    # is_training 由后台任务的 finally 在真正退出后清除，避免停止与重新启动
+    # 紧邻发生时，旧任务读取到被新任务清除的 stop_event 后继续运行。
 
     return JSONResponse({
         "success": True,
