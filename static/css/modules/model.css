@@ -65,33 +65,6 @@
     font-weight: 600;
 }
 
-.current-active-model {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: linear-gradient(135deg, rgba(0, 188, 212, 0.1), rgba(0, 188, 212, 0.05));
-    border: 1px solid rgba(0, 188, 212, 0.3);
-    border-radius: 6px;
-}
-
-.active-model-label {
-    font-size: 13px;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.active-model-name {
-    font-size: 14px;
-    color: var(--text-color);
-    font-family: 'Courier New', monospace;
-    font-weight: 600;
-}
-
-.active-model-name.active {
-    color: var(--primary-color);
-}
-
 /* 模型列表 - 网格布局 */
 .models-list {
     display: flex;
@@ -205,6 +178,17 @@
     align-items: center;
     justify-content: center;
     gap: 5px;
+}
+
+.model-actions a.btn-small,
+.history-actions a.btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--secondary-color);
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 /* ========== 训练参数优化 ========== */

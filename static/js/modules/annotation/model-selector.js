@@ -5,6 +5,7 @@
 
 import { setModelType, getModelType } from './auto-annotate.js';
 import { showToast } from '../../utils/toast.js';
+import { appState } from '../../core/state.js';
 
 let selectorContainer = null;
 let modelButtons = {};
@@ -153,7 +154,11 @@ function updateActiveButton(modelType) {
 export async function showModelStatus() {
     try {
         // 检查 YOLO 模型状态
-        const yoloResponse = await fetch('/api/models/active');
+        const currentProject = appState.getState('currentProject');
+        const activeModelUrl = currentProject
+            ? `/api/models/active?project_name=${encodeURIComponent(currentProject)}`
+            : '/api/models/active';
+        const yoloResponse = await fetch(activeModelUrl);
         const yoloData = await yoloResponse.json();
         
         // 检查 LocateAnything 模型状态
@@ -161,7 +166,7 @@ export async function showModelStatus() {
         const locateData = await locateResponse.json();
         
         let message = '模型状态:\n';
-        message += `YOLO: ${yoloData.active_model || '未设置'}\n`;
+        message += `YOLO (${currentProject || '未选择项目'}): ${yoloData.active_model || '未设置'}\n`;
         message += `LocateAnything: ${locateData.status || '未加载'}`;
         
         showToast(message, 'info');

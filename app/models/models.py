@@ -61,6 +61,20 @@ class ModelRecord(Base):
     project_rel = relationship("Project", foreign_keys=[project_id])
 
 
+class ProjectActiveModel(Base):
+    """The automatic-annotation model selected for a project."""
+    __tablename__ = 'project_active_models'
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey('projects.id'), unique=True, index=True, nullable=False)
+    model_id = Column(Integer, ForeignKey('model_records.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project_rel = relationship("Project", foreign_keys=[project_id])
+    model_rel = relationship("ModelRecord", foreign_keys=[model_id])
+
+
 class TrainingRun(Base):
     """模型训练任务与项目的持久化关联。"""
     __tablename__ = 'training_runs'

@@ -38,9 +38,11 @@ export async function getModelList() {
  * 获取当前激活的模型
  * API: /api/models/active
  */
-export async function getActiveModel() {
+export async function getActiveModel(projectName = appState.getState('currentProject')) {
+    if (!projectName) return null;
+
     try {
-        const data = await apiGet('/api/models/active');
+        const data = await apiGet(`/api/models/active?project_name=${encodeURIComponent(projectName)}`);
         return data.active_model || null;
     } catch (error) {
         console.error('Get active model failed:', error);
@@ -109,8 +111,11 @@ export async function setActiveModel(modelName) {
         const data = await apiPost('/api/models/set_active', formData);
         
         if (data.success) {
-            showToast(`已应用模型: ${modelName}`, 'success');
-            eventBus.emit(EVENTS.MODEL_ACTIVATED, { modelName });
+            showToast(data.message || `已应用模型 ${modelName}`, 'success');
+            eventBus.emit(EVENTS.MODEL_ACTIVATED, {
+                modelName,
+                projectName: data.project_name
+            });
             return data;
         }
         throw new Error(data.detail || '应用模型失败');

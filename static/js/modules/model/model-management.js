@@ -340,14 +340,7 @@ async function loadUploadedModels() {
         const modelsData = await modelsResponse.json();
         const activeData = await activeResponse.json();
         
-        const activeModel = activeData.active_model;
-        
-        // 更新当前应用模型显示
-        const activeModelName = document.getElementById('active-model-name');
-        if (activeModelName) {
-            activeModelName.textContent = activeModel || '未设置';
-            activeModelName.className = activeModel ? 'active-model-name active' : 'active-model-name';
-        }
+        const activeModels = activeData.active_models || {};
         
         if (modelsResponse.ok && modelsData.success) {
             const modelsList = document.getElementById('uploaded-models-list');
@@ -373,7 +366,8 @@ async function loadUploadedModels() {
                     </div>
                     <div class="model-group-grid">
                     ${(groupedModels[groupName] || []).map(model => {
-                const isActive = model.name === activeModel;
+                const projectName = model.project_name;
+                const isActive = Boolean(projectName) && activeModels[projectName] === model.name;
                 return `
                     <div class="model-item ${isActive ? 'active-model-item' : ''}" data-model-info='${JSON.stringify(model).replace(/'/g, "&apos;")}'>
                         <div class="model-info">
@@ -382,7 +376,8 @@ async function loadUploadedModels() {
                             <span class="model-time">${formatDateTime(model.modified_time)}</span>
                         </div>
                         <div class="model-actions">
-                            ${!isActive ? `<button class="btn-primary btn-small" data-model-name="${model.name}" data-action="set-active">应用</button>` : ''}
+                            ${projectName && !isActive ? `<button class="btn-primary btn-small" data-model-name="${model.name}" data-action="set-active">应用到标注</button>` : ''}
+                            <a class="btn-secondary btn-small" href="/api/models/download/${encodeURIComponent(model.name)}" download>下载</a>
                             <button class="btn-danger btn-small" data-model-name="${model.name}" data-action="delete">删除</button>
                         </div>
                     </div>
@@ -395,7 +390,7 @@ async function loadUploadedModels() {
             // 绑定模型操作事件
             bindModelActions(modelsList, modelsData.models);
             
-            eventBus.emit('model:list-loaded', { models: modelsData.models, activeModel });
+            eventBus.emit('model:list-loaded', { models: modelsData.models, activeModels });
         }
     } catch (error) {
         console.error('Failed to load models:', error);
@@ -439,9 +434,12 @@ export async function setActiveModel(modelName) {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            showToast(`已应用模型: ${modelName}`, 'success');
+            showToast(data.message || `已应用模型 ${modelName}`, 'success');
             loadUploadedModels();
-            eventBus.emit('model:active-changed', { modelName });
+            eventBus.emit('model:active-changed', {
+                modelName,
+                projectName: data.project_name
+            });
         } else {
             throw new Error(data.detail || '应用模型失败');
         }
@@ -557,6 +555,10 @@ async function loadTrainHistory() {
                                 <span class="btn-icon">💾</span>
                                 保存模型
                             </button>
+                            <a class="btn-small btn-secondary" href="/api/models/train/download/${encodeURIComponent(item.name)}" download>
+                                <span class="btn-icon">⬇️</span>
+                                下载模型
+                            </a>
                         ` : ''}
                         <button class="btn-small btn-secondary" data-train-path="${item.train_path}" data-action="view-results">
                             <span class="btn-icon">📊</span>
@@ -800,17 +802,16 @@ export async function loadModelManagementUI() {
         const response = await fetch(`/api/admin/projects?user=${encodeURIComponent(currentUser || '')}`);
         const data = await response.json();
         
-        if (response.ok && data.projects && trainProjectSelect) {
+        if (response.ok && data.projects) {
             const projectNames = Object.keys(data.projects);
-            trainProjectSelect.innerHTML = '<option value="">请选择项目</option>' +
-                projectNames.map(projectName => 
-                    `<option value="${projectName}">${projectName}</option>`
-                ).join('');
+            const projectOptions = projectNames.map(projectName =>
+                `<option value="${projectName}">${projectName}</option>`
+            ).join('');
+            if (trainProjectSelect) {
+                trainProjectSelect.innerHTML = '<option value="">请选择项目</option>' + projectOptions;
+            }
             if (modelProjectSelect) {
-                modelProjectSelect.innerHTML = '<option value="">基础模型</option>' +
-                    projectNames.map(projectName =>
-                        `<option value="${projectName}">${projectName}</option>`
-                    ).join('');
+                modelProjectSelect.innerHTML = '<option value="">基础模型</option>' + projectOptions;
             }
         }
     } catch (error) {

@@ -12,6 +12,52 @@ import { redrawAll } from './annotation-canvas.js';
 import { getCurrentFrameInfo } from './annotation-frame.js';
 
 /**
+ * 将标注坐标规范到图像有效范围后生成保存副本。
+ * 画布坐标换算可能产生 x === width、y === height 或极小越界，
+ * 这些点不应导致整个标注对象被静默丢弃。
+ */
+function buildSerializableObjects(objects, imageWidth, imageHeight) {
+    if (!imageWidth || !imageHeight) return [];
+
+    const maxX = Math.max(0, imageWidth - 0.000001);
+    const maxY = Math.max(0, imageHeight - 0.000001);
+    const clampPoint = (point) => {
+        if (!Array.isArray(point) || point.length < 2) return null;
+        const x = Number(point[0]);
+        const y = Number(point[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return [Math.max(0, Math.min(maxX, x)), Math.max(0, Math.min(maxY, y))];
+    };
+
+    return (objects || []).flatMap(obj => {
+        const maskData = (obj.maskData || [])
+            .map(polygon => (polygon || []).map(clampPoint).filter(Boolean))
+            .filter(polygon => polygon.length >= 3);
+        if (maskData.length === 0) return [];
+
+        const boxData = Array.isArray(obj.boxData) && obj.boxData.length === 4
+            ? [
+                Math.max(0, Math.min(maxX, Number(obj.boxData[0]) || 0)),
+                Math.max(0, Math.min(maxY, Number(obj.boxData[1]) || 0)),
+                Math.max(0, Math.min(maxX, Number(obj.boxData[2]) || 0)),
+                Math.max(0, Math.min(maxY, Number(obj.boxData[3]) || 0))
+            ]
+            : null;
+        const obbData = Array.isArray(obj.obbData)
+            ? obj.obbData.map(clampPoint).filter(Boolean)
+            : null;
+
+        return [{
+            ...obj,
+            maskData,
+            boxData,
+            obbData: obbData?.length === 4 ? obbData : null,
+            annotationType: obj.annotationType || 'sam'
+        }];
+    });
+}
+
+/**
  * 初始化保存模块
  */
 export function init() {
@@ -102,30 +148,11 @@ export async function saveAnnotations() {
         naturalHeight: displayImage.naturalHeight
     };
     
-    // 验证并过滤有效对象
-    const validObjects = annotationState.objects.filter(obj => {
-        if (!obj.maskData || obj.maskData.length === 0) return false;
-        
-        // 验证mask数据是否在图像范围内
-        for (const polygon of obj.maskData) {
-            for (const point of polygon) {
-                const x = point[0], y = point[1];
-                if (x < 0 || x >= imageDimensions.naturalWidth ||
-                    y < 0 || y >= imageDimensions.naturalHeight) {
-                    console.warn(`Invalid mask point: (${x}, ${y}) outside image bounds`);
-                    return false;
-                }
-            }
-        }
-        return true;
-    });
-    
-    // 将 obbData 和 annotationType 加入 payload，供后端保存
-    const validObjectsWithObb = validObjects.map(obj => ({
-        ...obj,
-        obbData: obj.obbData || null,
-        annotationType: obj.annotationType || 'sam'
-    }));
+    const validObjects = buildSerializableObjects(
+        annotationState.objects,
+        imageDimensions.naturalWidth,
+        imageDimensions.naturalHeight
+    );
     
     // 检查是否是抽帧图片
     const isExtractedFrame = displayImage.src.includes('/extracted/');
@@ -133,7 +160,7 @@ export async function saveAnnotations() {
     
     const payload = {
         status: 'success',
-        objects: validObjectsWithObb,
+        objects: validObjects,
         frameUrl: new URL(displayImage.src).pathname,
         videoPath: frameInfo.videoPath,
         imageWidth: imageDimensions.naturalWidth,
@@ -209,19 +236,11 @@ export async function saveAnnotationsSilent() {
         naturalHeight: displayImage.naturalHeight
     };
     
-    const validObjects = annotationState.objects.filter(obj => {
-        if (!obj.maskData || obj.maskData.length === 0) return false;
-        for (const polygon of obj.maskData) {
-            for (const point of polygon) {
-                const x = point[0], y = point[1];
-                if (x < 0 || x >= imageDimensions.naturalWidth ||
-                    y < 0 || y >= imageDimensions.naturalHeight) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    });
+    const validObjects = buildSerializableObjects(
+        annotationState.objects,
+        imageDimensions.naturalWidth,
+        imageDimensions.naturalHeight
+    );
     
     const isExtractedFrame = displayImage.src.includes('/extracted/');
     const frameInfo = getCurrentFrameInfo();
@@ -303,20 +322,11 @@ export function validateAnnotations() {
         naturalHeight: displayImage.naturalHeight
     };
     
-    const validObjects = annotationState.objects.filter(obj => {
-        if (!obj.maskData || obj.maskData.length === 0) return false;
-        
-        for (const polygon of obj.maskData) {
-            for (const point of polygon) {
-                const x = point[0], y = point[1];
-                if (x < 0 || x >= imageDimensions.naturalWidth ||
-                    y < 0 || y >= imageDimensions.naturalHeight) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    });
+    const validObjects = buildSerializableObjects(
+        annotationState.objects,
+        imageDimensions.naturalWidth,
+        imageDimensions.naturalHeight
+    );
     
     return {
         valid: validObjects.length > 0,

@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import Project, ModelRecord, TrainingRun
+from app.models.models import Project, ModelRecord, ProjectActiveModel, TrainingRun
 from app.utils.locate_anything_worker import LocateAnythingModelManager
 from PIL import Image
 
@@ -46,10 +46,6 @@ training_status = {
 training_process = None
 training_process_lock = threading.RLock()
 training_stop_event = threading.Event()
-
-# 全局变量：当前应用的模型
-active_model = None
-
 
 def upsert_model_record(db, filename, project=None, source_type='uploaded',
                         display_name=None, original_name=None, file_size=0):
@@ -154,6 +150,7 @@ async def list_models(db: Session = Depends(get_db)):
                         "size": file_stat.st_size,
                         "modified_time": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
                         "group": record.project_name or BASE_MODEL_GROUP,
+                        "project_name": record.project_name,
                         "source_type": record.source_type
                     })
 
@@ -170,6 +167,26 @@ async def list_models(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"获取模型列表失败: {str(e)}")
 
 
+@router.get("/download/{model_name}")
+async def download_model(model_name: str):
+    """下载模型列表中的模型文件。"""
+    if os.path.basename(model_name) != model_name or not model_name.lower().endswith('.pt'):
+        raise HTTPException(status_code=400, detail="模型文件名无效")
+
+    models_root = os.path.abspath(MODELS_DIR)
+    file_path = os.path.abspath(os.path.join(models_root, model_name))
+    if os.path.commonpath([models_root, file_path]) != models_root:
+        raise HTTPException(status_code=400, detail="模型文件路径无效")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="模型文件不存在")
+
+    return FileResponse(
+        file_path,
+        media_type="application/octet-stream",
+        filename=model_name
+    )
+
+
 @router.delete("/{model_name}")
 async def delete_model(model_name: str, db: Session = Depends(get_db)):
     """删除模型文件"""
@@ -182,6 +199,9 @@ async def delete_model(model_name: str, db: Session = Depends(get_db)):
         os.remove(file_path)
         record = db.query(ModelRecord).filter(ModelRecord.filename == model_name).first()
         if record:
+            db.query(ProjectActiveModel).filter(
+                ProjectActiveModel.model_id == record.id
+            ).delete(synchronize_session=False)
             db.delete(record)
             db.commit()
 
@@ -590,24 +610,73 @@ async def get_train_history(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"获取训练历史失败: {str(e)}")
 
 
-@router.post("/set_active")
-async def set_active_model(model_name: str = Form(...)):
-    """设置应用到自动标注的模型"""
-    global active_model
+@router.get("/train/download/{train_dir}")
+async def download_trained_model(train_dir: str):
+    """下载已完成训练任务生成的 best.pt。"""
+    if os.path.basename(train_dir) != train_dir:
+        raise HTTPException(status_code=400, detail="训练记录名称无效")
 
+    training_root = os.path.abspath(TRAIN_DIR)
+    weights_path = os.path.abspath(
+        os.path.join(training_root, train_dir, "train", "weights", "best.pt")
+    )
+    if os.path.commonpath([training_root, weights_path]) != training_root:
+        raise HTTPException(status_code=400, detail="训练模型路径无效")
+    if not os.path.isfile(weights_path):
+        raise HTTPException(status_code=404, detail="训练模型尚未生成")
+
+    return FileResponse(
+        weights_path,
+        media_type="application/octet-stream",
+        filename=f"{train_dir}_best.pt"
+    )
+
+
+@router.post("/set_active")
+async def set_active_model(
+        model_name: str = Form(...),
+        db: Session = Depends(get_db)
+):
+    """设置应用到自动标注的模型"""
     try:
         model_path = os.path.join(MODELS_DIR, model_name)
 
         if not os.path.exists(model_path):
             raise HTTPException(status_code=404, detail="模型文件不存在")
 
-        active_model = model_name
-        logger.info(f"Active model set to: {model_name}")
+        model_record = db.query(ModelRecord).filter(ModelRecord.filename == model_name).first()
+        if not model_record:
+            model_record = upsert_model_record(
+                db, model_name, file_size=os.path.getsize(model_path)
+            )
+
+        if not model_record.project_id:
+            raise HTTPException(status_code=400, detail="基础模型不能应用到自动标注")
+
+        project = db.query(Project).filter(Project.id == model_record.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="模型所属项目不存在")
+
+        application = db.query(ProjectActiveModel).filter(
+            ProjectActiveModel.project_id == project.id
+        ).first()
+        if application is None:
+            application = ProjectActiveModel(
+                project_id=project.id,
+                model_id=model_record.id
+            )
+            db.add(application)
+        else:
+            application.model_id = model_record.id
+        db.commit()
+
+        logger.info(f"Active model for project '{project.name}' set to: {model_name}")
 
         return JSONResponse({
             "success": True,
-            "message": f"已应用模型: {model_name}",
-            "active_model": active_model
+            "message": f"已将模型 {model_name} 应用到项目 {project.name}",
+            "project_name": project.name,
+            "active_model": model_name
         })
 
     except HTTPException:
@@ -618,27 +687,34 @@ async def set_active_model(model_name: str = Form(...)):
 
 
 @router.get("/active")
-async def get_active_model():
+async def get_active_model(
+        project_name: Optional[str] = None,
+        db: Session = Depends(get_db)
+):
     """获取当前应用的模型"""
+    applications = db.query(ProjectActiveModel).join(
+        Project, ProjectActiveModel.project_id == Project.id
+    ).join(
+        ModelRecord, ProjectActiveModel.model_id == ModelRecord.id
+    ).all()
+    active_models = {
+        item.project_rel.name: item.model_rel.filename
+        for item in applications
+        if item.project_rel and item.model_rel
+    }
+
     return JSONResponse({
         "success": True,
-        "active_model": active_model
+        "project_name": project_name,
+        "active_model": active_models.get(project_name) if project_name else None,
+        "active_models": active_models
     })
 
 
 @router.post("/auto_annotate")
 async def auto_annotate(request: AutoAnnotateRequest, db: Session = Depends(get_db)):
     """使用应用的模型进行自动标注（通过标签名匹配）"""
-    global active_model
-
     try:
-        if not active_model:
-            raise HTTPException(status_code=400, detail="请先设置应用的模型")
-
-        model_path = os.path.join(MODELS_DIR, active_model)
-        if not os.path.exists(model_path):
-            raise HTTPException(status_code=404, detail="应用的模型文件不存在")
-
         # 获取项目标签体系
         project_name = request.project_name
         if not project_name:
@@ -647,6 +723,20 @@ async def auto_annotate(request: AutoAnnotateRequest, db: Session = Depends(get_
         project_obj = db.query(Project).filter(Project.name == project_name).first()
         if not project_obj:
             raise HTTPException(status_code=404, detail=f"项目不存在: {project_name}")
+
+        application = db.query(ProjectActiveModel).filter(
+            ProjectActiveModel.project_id == project_obj.id
+        ).first()
+        if not application or not application.model_rel:
+            raise HTTPException(
+                status_code=400,
+                detail=f"项目 '{project_name}' 还未应用自动标注模型"
+            )
+
+        active_model = application.model_rel.filename
+        model_path = os.path.join(MODELS_DIR, active_model)
+        if not os.path.exists(model_path):
+            raise HTTPException(status_code=404, detail="项目应用的模型文件不存在")
 
         project_labels = project_obj.labels or []
         if not project_labels:
