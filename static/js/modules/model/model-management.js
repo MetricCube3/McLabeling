@@ -103,6 +103,15 @@ async function handleUnloadLocateModel() {
  * 设置事件监听
  */
 function setupEventListeners() {
+    const tabsContainer = document.querySelector('.model-management-tabs');
+    if (tabsContainer) {
+        tabsContainer.addEventListener('click', (event) => {
+            const tab = event.target.closest('[data-model-tab]');
+            if (!tab) return;
+            switchModelManagementTab(tab.dataset.modelTab);
+        });
+    }
+
     // LocateAnything 卸载 / 刷新状态
     if (unloadLocateBtn) {
         unloadLocateBtn.addEventListener('click', handleUnloadLocateModel);
@@ -157,6 +166,29 @@ function setupEventListeners() {
                 resultsModal.classList.add('hidden');
             }
         });
+    }
+}
+
+/**
+ * 横向切换模型管理、模型训练和训练历史模块。
+ */
+function switchModelManagementTab(tabName) {
+    document.querySelectorAll('[data-model-tab]').forEach(tab => {
+        const isActive = tab.dataset.modelTab === tabName;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
+    });
+
+    document.querySelectorAll('[data-model-panel]').forEach(panel => {
+        panel.classList.toggle('hidden', panel.dataset.modelPanel !== tabName);
+    });
+
+    if (tabName === 'history') {
+        loadTrainHistory();
+    } else if (tabName === 'models') {
+        loadUploadedModels();
+    } else if (tabName === 'training') {
+        refreshLocateStatus();
     }
 }
 

@@ -344,8 +344,20 @@
                 <!-- 模型管理界面 -->
                 <section id="model-management-ui" class="hidden">
                     <div class="model-management-content">
+                        <div class="model-management-tabs" role="tablist" aria-label="模型管理模块">
+                            <button class="model-management-tab active" type="button" role="tab" aria-selected="true" data-model-tab="models">
+                                🧠 模型管理
+                            </button>
+                            <button class="model-management-tab" type="button" role="tab" aria-selected="false" data-model-tab="training">
+                                🎯 模型训练
+                            </button>
+                            <button class="model-management-tab" type="button" role="tab" aria-selected="false" data-model-tab="history">
+                                📜 训练历史
+                            </button>
+                        </div>
+
                         <!-- 模型上传部分 -->
-                        <div class="model-section">
+                        <div class="model-section model-tab-panel" role="tabpanel" data-model-panel="models">
                             <div class="section-header">
                                 <h3>🧠 YOLO模型管理</h3>
                                 <span class="admin-badge">管理员功能</span>
@@ -391,7 +403,7 @@
                         </div>
 
                         <!-- 模型训练部分 -->
-                        <div class="model-section">
+                        <div class="model-section model-tab-panel hidden" role="tabpanel" data-model-panel="training">
                             <div class="section-header">
                                 <h3>🎯 模型训练</h3>
                                 <span class="admin-badge">管理员功能</span>
@@ -497,7 +509,7 @@
                         </div>
 
                         <!-- 训练历史 -->
-                        <div class="model-section">
+                        <div class="model-section model-tab-panel hidden" role="tabpanel" data-model-panel="history">
                             <div class="section-header">
                                 <h3>📜 训练历史</h3>
                             </div>
