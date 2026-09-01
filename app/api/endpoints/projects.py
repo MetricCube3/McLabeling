@@ -730,35 +730,45 @@ def get_labels(
 
 
 @router.get("/user/projects")
-def get_user_projects_endpoint(user: str = Query(...), db: Session = Depends(get_db)):
+def get_user_projects_endpoint(
+        user: str = Query(...),
+        task_type: Optional[str] = Query(None),
+        db: Session = Depends(get_db)
+):
     """获取用户有权限的项目列表"""
     try:
-        user_projects = get_user_projects(user, db)
+        if task_type not in (None, 'annotation', 'review'):
+            raise HTTPException(status_code=400, detail="任务类型无效")
+        user_projects = get_user_projects(user, db, task_type)
         return {"projects": user_projects}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to get user projects: {e}")
         raise HTTPException(status_code=500, detail=f"获取用户项目失败: {str(e)}")
 
 
-def get_user_projects(username: str, db: Session) -> list:
+def get_user_projects(username: str, db: Session, task_type: Optional[str] = None) -> list:
     """获取用户有权限的项目列表"""
     user_projects = set()
 
     # 检查标注任务
-    annotation_tasks = db.query(AnnotationTask).filter(
-        AnnotationTask.assignee == username
-    ).all()
-    for task in annotation_tasks:
-        if task.project_name:
-            user_projects.add(task.project_name)
+    if task_type in (None, 'annotation'):
+        annotation_tasks = db.query(AnnotationTask).filter(
+            AnnotationTask.assignee == username
+        ).all()
+        for task in annotation_tasks:
+            if task.project_name:
+                user_projects.add(task.project_name)
 
     # 检查审核任务
-    review_tasks = db.query(ReviewTask).filter(
-        ReviewTask.assignee == username
-    ).all()
-    for task in review_tasks:
-        if task.project_name:
-            user_projects.add(task.project_name)
+    if task_type in (None, 'review'):
+        review_tasks = db.query(ReviewTask).filter(
+            ReviewTask.assignee == username
+        ).all()
+        for task in review_tasks:
+            if task.project_name:
+                user_projects.add(task.project_name)
 
-    return list(user_projects)
+    return sorted(user_projects)
 

@@ -1050,9 +1050,8 @@ async function renderFilterControls(totalCount) {
         </div>
     `;
 
-    // 管理员额外显示用户和项目筛选
+    // 用户筛选仅管理员可见
     if (isAdmin) {
-        // 用户筛选
         let usernames = [];
         try {
             const response = await fetch(`/api/admin/users?user=${encodeURIComponent(currentUser)}`);
@@ -1077,10 +1076,12 @@ async function renderFilterControls(totalCount) {
                 </select>
             </div>
         `;
+    }
 
-        // 项目筛选
-        let projectNames = [];
-        try {
+    // 项目筛选对所有任务用户显示；普通用户只加载自己被分配任务所属的项目。
+    let projectNames = [];
+    try {
+        if (isAdmin) {
             const response = await fetch(`/api/admin/projects?user=${encodeURIComponent(currentUser)}`);
             if (response.ok) {
                 const data = await response.json();
@@ -1088,22 +1089,34 @@ async function renderFilterControls(totalCount) {
                     projectNames = Object.keys(data.projects);
                 }
             }
-        } catch (error) {
-            console.error('[review-list] Failed to load projects:', error);
+        } else {
+            const taskType = appMode === 'review' ? 'review' : 'annotation';
+            const response = await fetch(
+                `/api/user/projects?user=${encodeURIComponent(currentUser)}&task_type=${taskType}`
+            );
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data.projects)) {
+                    projectNames = data.projects;
+                }
+            }
         }
-
-        html += `
-            <div class="filter-group" style="display: inline-flex; flex-direction: row; align-items: center;">
-                <label for="project-filter" style="display: inline-block; margin-right: 4px;">项目</label>
-                <select id="project-filter" class="filter-select">
-                    <option value="">全部</option>
-                    ${projectNames.map(name =>
-                        `<option value="${name}" ${filterState.project === name ? 'selected' : ''}>${name}</option>`
-                    ).join('')}
-                </select>
-            </div>
-        `;
+    } catch (error) {
+        console.error('[review-list] Failed to load projects:', error);
     }
+
+    projectNames.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    html += `
+        <div class="filter-group" style="display: inline-flex; flex-direction: row; align-items: center;">
+            <label for="project-filter" style="display: inline-block; margin-right: 4px;">项目</label>
+            <select id="project-filter" class="filter-select">
+                <option value="">全部</option>
+                ${projectNames.map(name =>
+                    `<option value="${name}" ${filterState.project === name ? 'selected' : ''}>${name}</option>`
+                ).join('')}
+            </select>
+        </div>
+    `;
 
     html += `<div class="filter-stats">共 ${totalCount} 个任务</div></div>`;
     container.innerHTML = html;
@@ -1130,15 +1143,15 @@ async function renderFilterControls(totalCount) {
                 browse('');
             });
         }
+    }
 
-        const projectFilter = document.getElementById('project-filter');
-        if (projectFilter) {
-            projectFilter.addEventListener('change', (e) => {
-                filterState.project = e.target.value;
-                taskPaginationState.currentPage = 1;
-                browse('');
-            });
-        }
+    const projectFilter = document.getElementById('project-filter');
+    if (projectFilter) {
+        projectFilter.addEventListener('change', (e) => {
+            filterState.project = e.target.value;
+            taskPaginationState.currentPage = 1;
+            browse('');
+        });
     }
 }
 
