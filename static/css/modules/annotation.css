@@ -60,12 +60,13 @@
     grid-auto-rows: max-content;
     gap: 20px;
     padding: 20px;
-    flex: 1;
+    /* 高度跟随实际卡片行数，避免分页控件前出现大块空白。 */
+    flex: 0 0 auto;
     align-content: start;
     align-items: start;
     opacity: 1;
     will-change: opacity;
-    min-height: 200px; /* 设置最小高度，避免内容加载时跳动 */
+    min-height: 0;
     background: var(--surface-color);
     transition: all 0.3s ease;
 }
