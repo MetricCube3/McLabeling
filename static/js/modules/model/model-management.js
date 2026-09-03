@@ -6,6 +6,7 @@
 
 import { appState } from '../../core/state.js';
 import { eventBus, EVENTS } from '../../core/event-bus.js';
+import { APP_CONSTANTS } from '../../core/config.js';
 import { showToast } from '../../utils/toast.js';
 import { showConfirm } from '../../utils/modal.js';
 
@@ -28,11 +29,15 @@ let locateModelStatusBadge = null;
 
 // 训练监控
 let trainingInterval = null;
+let isInitialized = false;
+
+// 默认收起；记录用户已展开的分组，在列表局部刷新时保持选择
+const expandedModelGroups = new Set();
 
 /**
  * 初始化模型管理模块
  */
-export function init() {
+export async function init() {
     // 获取DOM元素
     uploadModelBtn = document.getElementById('upload-model-btn');
     modelUploadInput = document.getElementById('model-upload-input');
@@ -50,11 +55,16 @@ export function init() {
     refreshLocateStatusBtn = document.getElementById('refresh-locate-status-btn');
     locateModelStatusBadge = document.getElementById('locate-model-status');
 
-    setupEventListeners();
-    refreshLocateStatus();
-    
-    // 订阅事件
-    eventBus.on('model:load-ui', loadModelManagementUI);
+    if (!isInitialized) {
+        setupEventListeners();
+        isInitialized = true;
+    }
+
+    // 路由会先显示页面再初始化模块，直接在这里加载可避免首次事件丢失。
+    if (appState.getState('appMode') === APP_CONSTANTS.MODES.MODEL_MANAGEMENT) {
+        refreshLocateStatus();
+        await loadModelManagementUI();
+    }
 }
 
 /**
@@ -390,13 +400,21 @@ async function loadUploadedModels() {
                 return a.localeCompare(b, 'zh-CN');
             });
 
-            modelsList.innerHTML = groupNames.map(groupName => `
-                <section class="model-group">
-                    <div class="model-group-header">
-                        <h5>${groupName === '基础模型' ? '🧱' : '📁'} ${groupName}</h5>
-                        <span>${(groupedModels[groupName] || []).length} 个模型</span>
-                    </div>
-                    <div class="model-group-grid">
+            modelsList.innerHTML = groupNames.map((groupName, groupIndex) => {
+                const isCollapsed = !expandedModelGroups.has(groupName);
+                const groupContentId = `model-group-content-${groupIndex}`;
+                return `
+                <section class="model-group ${isCollapsed ? 'collapsed' : ''}">
+                    <button class="model-group-header" type="button"
+                            aria-expanded="${!isCollapsed}" aria-controls="${groupContentId}"
+                            data-action="toggle-model-group">
+                        <span class="model-group-title">${groupName === '基础模型' ? '🧱' : '📁'} ${groupName}</span>
+                        <span class="model-group-summary">
+                            <span class="model-group-count">${(groupedModels[groupName] || []).length} 个模型</span>
+                            <span class="model-group-chevron" aria-hidden="true">⌄</span>
+                        </span>
+                    </button>
+                    <div id="${groupContentId}" class="model-group-grid" ${isCollapsed ? 'hidden' : ''}>
                     ${(groupedModels[groupName] || []).map(model => {
                 const projectName = model.project_name;
                 const isActive = Boolean(projectName) && activeModels[projectName] === model.name;
@@ -417,8 +435,11 @@ async function loadUploadedModels() {
                     }).join('')}
                     </div>
                 </section>
-            `).join('');
-            
+            `;
+            }).join('');
+
+            bindModelGroupToggles(modelsList, groupNames);
+
             // 绑定模型操作事件
             bindModelActions(modelsList, modelsData.models);
             
@@ -427,6 +448,31 @@ async function loadUploadedModels() {
     } catch (error) {
         console.error('Failed to load models:', error);
     }
+}
+
+/**
+ * 绑定模型分组的展开/收起操作
+ */
+function bindModelGroupToggles(container, groupNames) {
+    container.querySelectorAll('[data-action="toggle-model-group"]').forEach((button, index) => {
+        button.addEventListener('click', () => {
+            const group = button.closest('.model-group');
+            const content = group?.querySelector('.model-group-grid');
+            const groupName = groupNames[index];
+            if (!group || !content || !groupName) return;
+
+            const isCollapsed = !content.hidden;
+            content.hidden = isCollapsed;
+            group.classList.toggle('collapsed', isCollapsed);
+            button.setAttribute('aria-expanded', String(!isCollapsed));
+
+            if (isCollapsed) {
+                expandedModelGroups.delete(groupName);
+            } else {
+                expandedModelGroups.add(groupName);
+            }
+        });
+    });
 }
 
 /**

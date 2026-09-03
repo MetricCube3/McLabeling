@@ -252,10 +252,6 @@ class Router {
                     if (mainLayout) mainLayout.classList.remove('hidden');
                 }
                 
-                // 模型管理需要加载项目列表
-                if (mode === APP_CONSTANTS.MODES.MODEL_MANAGEMENT) {
-                    eventBus.emit('model:load-ui');
-                }
             }
         }
     }
