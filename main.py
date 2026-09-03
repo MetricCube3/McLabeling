@@ -2,6 +2,7 @@
 FastAPI 主应用
 """
 import os
+import hashlib
 import logging
 import sys
 from fastapi import FastAPI, Request
@@ -30,6 +31,23 @@ from app.api.endpoints.admin_project_export import router as admin_project_expor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def calculate_static_version(static_dir: str) -> str:
+    """根据前端文件内容生成稳定版本号，内容变化时静态 URL 自动变化。"""
+    digest = hashlib.sha256()
+
+    for root, dirnames, filenames in os.walk(static_dir):
+        dirnames.sort()
+        for filename in sorted(filenames):
+            file_path = os.path.join(root, filename)
+            relative_path = os.path.relpath(file_path, static_dir).replace(os.sep, "/")
+            digest.update(relative_path.encode("utf-8"))
+            with open(file_path, "rb") as asset_file:
+                for chunk in iter(lambda: asset_file.read(1024 * 1024), b""):
+                    digest.update(chunk)
+
+    return digest.hexdigest()[:12]
+
 # 创建FastAPI应用
 app = FastAPI(
     title="mclabeling API",
@@ -46,11 +64,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 每次前端文件内容变化时都会生成新的静态资源路径。
+STATIC_VERSION = calculate_static_version(STATIC_DIR)
+VERSIONED_STATIC_PREFIX = f"/static/{STATIC_VERSION}"
+
+
+@app.middleware("http")
+async def prevent_stale_frontend_cache(request: Request, call_next):
+    """入口页面不缓存；带内容指纹的资源可安全长期缓存。"""
+    response = await call_next(request)
+    request_path = request.url.path
+
+    if request_path == "/":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    elif request_path.startswith(f"{VERSIONED_STATIC_PREFIX}/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif request_path.startswith("/static/"):
+        # 兼容接口返回的封面和临时图片等未版本化静态地址。
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+
+    return response
+
+
 # 初始化目录
 init_directories()
 
-# 挂载静态文件
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# 版本化路径必须先于兼容路径挂载，确保模块相对导入和 CSS @import 都带版本号。
+app.mount(VERSIONED_STATIC_PREFIX, StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_legacy")
 app.mount("/data/videos", StaticFiles(directory=VIDEO_DIR), name="video_data")
 app.mount("/data/images", StaticFiles(directory=IMAGE_DIR), name="image_data")
 app.mount("/data/annotated", StaticFiles(directory=ANNOTATED_DIR), name="annotated_data")
