@@ -16,6 +16,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.models.models import AnnotationTask, ReviewTask, ExtractionInfo, User
 from app.core.dependencies import has_role, is_admin
+from app.utils.time_utils import utc_to_host_iso
 from app.utils.utils import (
     VIDEO_DIR, IMAGE_DIR, SUCCESS_DIR, REVIEW_DIR, TEMP_DIR, ANNOTATED_DIR,
     load_extraction_info
@@ -58,7 +59,7 @@ def browse_videos(
             'assignee': task.assignee,
             'status': task.status,
             'project': task.project_name,
-            'created_at': task.created_at.isoformat() if task.created_at else None
+            'created_at': utc_to_host_iso(task.created_at)
         }
 
     files = []
@@ -421,7 +422,7 @@ def browse_annotated(
                 'assignee': task.assignee,
                 'status': task.status,
                 'project': task.project_name,
-                'created_at': task.created_at.isoformat() if task.created_at else None
+                'created_at': utc_to_host_iso(task.created_at)
             }
 
         directories = []

@@ -13,6 +13,7 @@ from typing import Optional, List
 from app.core.database import get_db
 from app.models.models import Project, User, AnnotationTask, ReviewTask, VideoPool, ExtractionInfo
 from app.core.dependencies import require_admin, is_admin, get_user_roles
+from app.utils.time_utils import format_utc_as_host, utc_to_host_iso
 import logging
 
 router = APIRouter()
@@ -67,7 +68,7 @@ def get_projects(user: str = Query(...), db: Session = Depends(get_db)):
     result = {}
     for project in projects:
         # 格式化创建时间
-        created_time = project.created_at.strftime('%Y-%m-%d %H:%M:%S') if project.created_at else '未知'
+        created_time = format_utc_as_host(project.created_at) or '未知'
 
         result[project.name] = {
             "description": project.description,
@@ -577,7 +578,7 @@ def get_project_task_stats(
                 'type': 'annotation',
                 'assignee': task.assignee or '未分配',
                 'status': task_status,
-                'created_at': task.created_at.isoformat() if task.created_at else None,
+                'created_at': utc_to_host_iso(task.created_at),
                 'stats': {
                     'total_images': task_total_images,
                     'annotated_images': task_annotated,
@@ -632,7 +633,7 @@ def get_project_task_stats(
                 'type': 'annotation',
                 'assignee': '未分配',
                 'status': 'unassigned',
-                'created_at': unassigned.added_at.isoformat() if unassigned.added_at else None,
+                'created_at': utc_to_host_iso(unassigned.added_at),
                 'stats': {
                     'total_images': unassigned_total_images,
                     'annotated_images': 0,

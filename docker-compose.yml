@@ -27,7 +27,8 @@ services:
       - HOST=0.0.0.0
       - MODEL_INSTANCES=1
       - LOG_LEVEL=INFO
-      - TZ=Asia/Shanghai
+      # 始终使用挂载到 /etc/localtime 的宿主机时区
+      - TZ=:/etc/localtime
       # LocateAnything 配置
       - LOCATE_ANYTHING_MODEL_PATH=data/models/LocateAnything-3B
       - CUDA_VISIBLE_DEVICES=0

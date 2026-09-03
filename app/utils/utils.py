@@ -243,7 +243,7 @@ def perform_frame_extraction(video_path, video_abs_path, target_fps, username, p
                 task.total_labels = 0  # 重置标签总数
                 task.label_counts = {}  # 重置标签计数（字典类型）
                 task.last_annotated_frame = -1  # 重置最后标注帧
-                task.stats_updated_at = datetime.now()
+                task.stats_updated_at = datetime.utcnow()
                 
                 db.commit()
                 db.refresh(task)

@@ -4,7 +4,7 @@ FROM mclabeling:latest
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    TZ=Asia/Shanghai
+    TZ=:/etc/localtime
 
 WORKDIR /workspace
 

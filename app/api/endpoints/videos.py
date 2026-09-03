@@ -195,7 +195,7 @@ def clear_video_annotations_endpoint(
                 task.total_labels = 0
                 task.label_counts = {}  # 字典类型，不是字符串
                 task.last_annotated_frame = -1
-                task.stats_updated_at = datetime.now()
+                task.stats_updated_at = datetime.utcnow()
 
                 db.commit()
                 db.refresh(task)
