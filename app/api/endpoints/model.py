@@ -47,6 +47,62 @@ training_process = None
 training_process_lock = threading.RLock()
 training_stop_event = threading.Event()
 
+
+def resolve_training_device():
+    """根据环境变量确定 YOLO 训练设备，并在 GPU 模式下验证 CUDA。"""
+    configured_device = os.getenv("TRAIN_DEVICE", "gpu").strip().lower()
+
+    if configured_device == "cpu":
+        return "cpu", "CPU"
+
+    if configured_device != "gpu":
+        raise RuntimeError(
+            f"TRAIN_DEVICE 配置无效: {configured_device or '<空>'}，仅支持 gpu 或 cpu"
+        )
+
+    try:
+        import torch
+    except ImportError as exc:
+        raise RuntimeError(
+            "TRAIN_DEVICE=gpu，但无法导入 PyTorch，请检查服务器镜像中的 PyTorch 安装"
+        ) from exc
+
+    if torch.version.cuda is None:
+        raise RuntimeError(
+            "TRAIN_DEVICE=gpu，但当前安装的是不支持 CUDA 的 PyTorch 版本"
+        )
+
+    visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+    if visible_devices is not None and visible_devices.strip() in {"", "-1"}:
+        raise RuntimeError(
+            "TRAIN_DEVICE=gpu，但 CUDA_VISIBLE_DEVICES 未配置可用 GPU"
+        )
+
+    try:
+        torch.cuda.init()
+        cuda_available = torch.cuda.is_available()
+        device_count = torch.cuda.device_count()
+    except Exception as exc:
+        raise RuntimeError(
+            f"TRAIN_DEVICE=gpu，但 CUDA 初始化失败: {exc}"
+        ) from exc
+
+    if not cuda_available or device_count < 1:
+        raise RuntimeError(
+            "TRAIN_DEVICE=gpu，但 PyTorch 检测不到可用 CUDA 设备；"
+            "请检查 NVIDIA 驱动、容器 GPU 映射及 CUDA/PyTorch 版本兼容性"
+        )
+
+    try:
+        device_name = torch.cuda.get_device_name(0)
+    except Exception as exc:
+        raise RuntimeError(
+            f"TRAIN_DEVICE=gpu，CUDA 可用但无法读取 GPU 0: {exc}"
+        ) from exc
+
+    return "0", f"GPU 0 ({device_name})"
+
+
 def upsert_model_record(db, filename, project=None, source_type='uploaded',
                         display_name=None, original_name=None, file_size=0):
     record = db.query(ModelRecord).filter(ModelRecord.filename == filename).first()
@@ -333,11 +389,13 @@ def prepare_training_dataset(project_name: str, output_dir: str, task_type: str 
     return yaml_path, f"数据集准备完成: 训练{len(train_data)}个, 验证{len(val_data)}个"
 
 
-def run_training(config: TrainConfig):
+def run_training(config: TrainConfig, training_device: str, training_device_label: str):
     """后台运行训练任务
 
     Args:
         config: 训练配置
+        training_device: 传给 YOLO 的设备参数
+        training_device_label: 用于页面日志显示的设备名称
     """
     from app.core.database import SessionLocal
 
@@ -384,6 +442,7 @@ def run_training(config: TrainConfig):
         model_abs_path = os.path.abspath(model_path)
         training_status["log"].append(f"模型路径: {model_abs_path}")
         training_status["log"].append(f"训练输出目录: {output_dir}")
+        training_status["log"].append(f"训练设备: {training_device_label}")
 
         # 构建训练命令（根据任务类型选择detect或segment）
         task_command = config.task_type if config.task_type in ["detect", "segment"] else "segment"
@@ -396,6 +455,7 @@ def run_training(config: TrainConfig):
             f"lr0={config.lr}",
             f"imgsz={config.imgsz}",
             f"project={output_dir}",
+            f"device={training_device}",
             "name=train",
             "amp=False",  # 禁用AMP检查，避免下载测试模型
             "workers=2"  # 使用2个DataLoader进程，平衡性能和资源占用
@@ -507,6 +567,12 @@ async def start_training(config: TrainConfig, background_tasks: BackgroundTasks)
         raise HTTPException(status_code=400, detail="当前已有训练任务在进行中")
 
     try:
+        training_device, training_device_label = resolve_training_device()
+    except RuntimeError as exc:
+        logger.error(f"Training device validation failed: {exc}")
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
         # 在加入后台队列前立即占用训练状态，避免重复启动以及停止请求竞态。
         training_stop_event.clear()
         training_status["is_training"] = True
@@ -516,7 +582,9 @@ async def start_training(config: TrainConfig, background_tasks: BackgroundTasks)
         training_status["log"] = []
 
         # 在后台启动训练（会话在后台任务中创建）
-        background_tasks.add_task(run_training, config)
+        background_tasks.add_task(
+            run_training, config, training_device, training_device_label
+        )
 
         return JSONResponse({
             "success": True,

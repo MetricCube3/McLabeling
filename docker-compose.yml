@@ -26,6 +26,8 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - MODEL_INSTANCES=1
+      # 训练设备由 .env 配置，可选 gpu 或 cpu
+      - TRAIN_DEVICE=${TRAIN_DEVICE:-gpu}
       - LOG_LEVEL=INFO
       # 始终使用挂载到 /etc/localtime 的宿主机时区
       - TZ=:/etc/localtime
